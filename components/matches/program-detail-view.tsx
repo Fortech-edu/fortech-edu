@@ -21,16 +21,19 @@ import {
   ScoreSummary,
   SourceState,
 } from "./program-presentation.tsx";
+import { RecommendationEnhancement } from "../ai/enhancements.tsx";
+import type { StudentProfile } from "../../types/admissions.ts";
 
 export function ProgramDetailView({ programId }: { programId: string }) {
   const ready = useClientReady();
   if (!ready) return <div className="rounded-3xl bg-white p-8 text-center text-muted">Loading program details…</div>;
 
   const stored = loadStoredProfile();
-  const matches = stored?.completed ? getPrimaryMatches(stored.profile) : [];
+  const profile = stored?.completed ? stored.profile : null;
+  const matches = profile ? getPrimaryMatches(profile) : [];
   const recommendation = matches.find(({ program }) => program.id === programId);
 
-  if (!recommendation) {
+  if (!recommendation || !profile) {
     return (
       <section className="rounded-3xl border border-forest-100 bg-white p-8 text-center">
         <h1 className="text-2xl font-semibold text-forest-900">This program is not in your current matches</h1>
@@ -42,10 +45,10 @@ export function ProgramDetailView({ programId }: { programId: string }) {
     );
   }
 
-  return <ProgramDetail recommendation={recommendation} validIds={matches.map(({ program }) => program.id)} />;
+  return <ProgramDetail profile={profile} recommendation={recommendation} validIds={matches.map(({ program }) => program.id)} />;
 }
 
-function ProgramDetail({ recommendation, validIds }: { recommendation: ReturnType<typeof getPrimaryMatches>[number]; validIds: string[] }) {
+function ProgramDetail({ profile, recommendation, validIds }: { profile: StudentProfile; recommendation: ReturnType<typeof getPrimaryMatches>[number]; validIds: string[] }) {
   const router = useRouter();
   const { program } = recommendation;
   const [selected, setSelected] = useState(() => loadCompareSelection(validIds));
@@ -91,6 +94,8 @@ function ProgramDetail({ recommendation, validIds }: { recommendation: ReturnTyp
             <div className="mt-4"><ReasonsAndGaps recommendation={recommendation} /></div>
           </section>
         </div>
+
+        <RecommendationEnhancement profile={profile} recommendation={recommendation} />
 
         <section className="mt-7 border-t border-forest-100 pt-7">
           <h2 className="text-xl font-semibold text-forest-900">Score breakdown</h2>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { diagnoseProfile } from "../../lib/admissions/diagnosis.ts";
 import { loadStoredProfile } from "../../lib/storage/profile.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
+import { DiagnosisEnhancement } from "../ai/enhancements.tsx";
 
 function show(value: string | null) {
   return value ?? "Unknown";
@@ -75,6 +76,7 @@ export function DiagnosisView() {
               </div>
             ))}
           </dl>
+          <DiagnosisEnhancement profile={profile} diagnosis={diagnosis} />
         </div>
       </section>
 
