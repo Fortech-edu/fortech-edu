@@ -10,6 +10,7 @@ const profile: StudentProfile = {
   fullName: "Demo Student",
   nationality: "Kazakhstan",
   countryOfResidence: "Kazakhstan",
+  currentStudyStage: "Grade 12",
   targetDegree: "Bachelor",
   intendedField: "Computer Science",
   preferredCountries: ["Canada"],

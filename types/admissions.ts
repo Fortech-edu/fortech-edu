@@ -8,6 +8,7 @@ export type StudentProfile = {
   fullName: string | null;
   nationality: string | null;
   countryOfResidence: string | null;
+  currentStudyStage: string | null;
   targetDegree: string | null;
   intendedField: string | null;
   preferredCountries: string[];
