@@ -30,11 +30,13 @@ export type UniversityProgram = {
   id: string;
   universityName: string;
   programName: string;
+  field: string;
   country: string | null;
   degreeLevel: string | null;
   tuition: number | null;
   tuitionCurrency: string | null;
   tuitionPeriod: "semester" | "year" | "program" | null;
+  academicRequirement: Requirement | null;
   ieltsRequirement: Requirement | null;
   satRequirement: Requirement | null;
   deadline: string | null;
@@ -43,16 +45,20 @@ export type UniversityProgram = {
 };
 
 export type ScoreBreakdown = {
-  academics: number;
-  language: number;
-  affordability: number;
-  preferences: number;
+  fieldFit: number | null;
+  academicFit: number | null;
+  budgetFit: number | null;
+  languageFit: number | null;
+  countryPreference: number | null;
+  timelineFit: number | null;
 };
 
 export type Recommendation = {
   program: UniversityProgram;
   /** Profile match score, not an admission probability. */
   fitScore: number;
+  /** Percentage of weighted Fit Score inputs backed by known, comparable data. */
+  dataCoverage: number;
   breakdown: ScoreBreakdown;
   eligibility: EligibilityStatus;
   reasons: string[];
