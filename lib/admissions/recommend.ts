@@ -116,20 +116,7 @@ export function recommendPrograms(
 
   return programs
     .filter((program) => fieldsMatch(intendedField, program.field))
-    .map((program) => {
-      const { fitScore, dataCoverage, breakdown } = calculateFit(profile, program);
-      const { reasons, gaps } = explain(profile, program);
-
-      return {
-        program,
-        fitScore,
-        dataCoverage,
-        breakdown,
-        eligibility: evaluateEligibility(profile, program),
-        reasons,
-        gaps,
-      };
-    })
+    .map((program) => assessProgram(profile, program))
     .filter((recommendation) => recommendation.eligibility !== "not_eligible")
     .sort(
       (a, b) =>
@@ -137,4 +124,22 @@ export function recommendPrograms(
         b.fitScore - a.fitScore ||
         b.dataCoverage - a.dataCoverage,
     );
+}
+
+export function assessProgram(
+  profile: StudentProfile,
+  program: UniversityProgram,
+): Recommendation {
+  const { fitScore, dataCoverage, breakdown } = calculateFit(profile, program);
+  const { reasons, gaps } = explain(profile, program);
+
+  return {
+    program,
+    fitScore,
+    dataCoverage,
+    breakdown,
+    eligibility: evaluateEligibility(profile, program),
+    reasons,
+    gaps,
+  };
 }
