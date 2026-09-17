@@ -27,7 +27,7 @@ function MatchesContent() {
 
   const recommendations = getPrimaryMatches(stored.profile);
   if (!recommendations.length) {
-    return <EmptyState title="No suitable matches yet" copy="No current demo programs match your selected field and eligibility constraints. Edit your profile to explore other options." href="/onboarding" action="Edit profile" />;
+    return <EmptyState title="No suitable matches yet" copy="No verified programs match your selected degree, field, and current eligibility. Edit your profile to review the available options." href="/onboarding" action="Edit profile" />;
   }
 
   return <RecommendationList key={loadJourneyUpdatedAt()} recommendations={recommendations} />;

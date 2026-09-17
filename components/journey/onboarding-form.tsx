@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { programs } from "../../data/programs.ts";
 import type { StudentProfile } from "../../types/admissions.ts";
 import type { StoredProfile } from "../../lib/storage/profile.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
@@ -14,15 +15,7 @@ const stepDetails = [
   ["Timeline & review", "Confirm your profile before we build your diagnosis."],
 ] as const;
 
-const countries = [
-  "Australia",
-  "Austria",
-  "Canada",
-  "Estonia",
-  "Germany",
-  "Malaysia",
-  "United States",
-] as const;
+const countries = [...new Set(programs.flatMap(({ country }) => country ? [country] : []))].sort();
 
 const emptyProfile: StudentProfile = {
   fullName: null,
@@ -53,7 +46,7 @@ function numberOrNull(value: string) {
 function validStep(step: number, profile: StudentProfile) {
   if (step === 1) {
     return Boolean(
-      profile.currentStudyStage && profile.targetDegree && profile.intendedField,
+      profile.currentStudyStage && profile.targetDegree === "Bachelor" && profile.intendedField,
     );
   }
   if (step === 2) {
@@ -201,7 +194,6 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
               >
                 <option value="">Choose a degree</option>
                 <option>Bachelor</option>
-                <option>Master</option>
               </select>
             </label>
 

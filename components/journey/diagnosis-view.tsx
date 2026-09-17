@@ -154,7 +154,7 @@ function DiagnosisCard({
         {items.length > 0 ? (
           items.map((item) => (
             <li key={item} className="flex gap-3 text-sm leading-6 text-ink">
-              <span className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${markerClass}`}>
+              <span className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${markerClass}`} aria-hidden="true">
                 {marker}
               </span>
               <span>{item}</span>

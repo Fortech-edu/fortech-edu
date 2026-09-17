@@ -112,7 +112,7 @@ export function recommendPrograms(
   programs: UniversityProgram[],
 ): Recommendation[] {
   const { intendedField } = profile;
-  if (intendedField === null) return [];
+  if (intendedField === null || profile.targetDegree !== "Bachelor") return [];
 
   return programs
     .filter((program) => fieldsMatch(intendedField, program.field))

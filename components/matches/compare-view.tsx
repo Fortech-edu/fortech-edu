@@ -108,7 +108,7 @@ function ComparisonCard({ recommendation, other }: { recommendation: Recommendat
       <CompareList title="Gaps" items={recommendation.gaps} />
 
       <div className="mt-6 border-t border-forest-100 pt-4 text-sm">
-        {source ? <a href={source.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-forest-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">{source.label}</a> : <span className="text-muted">No source link provided</span>}
+        {source ? <a href={source.href} target="_blank" rel="noopener noreferrer" aria-label={`${source.label} (opens in a new tab)`} className="font-semibold text-forest-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">{source.label}</a> : <span className="text-muted">No source link provided</span>}
       </div>
     </article>
   );

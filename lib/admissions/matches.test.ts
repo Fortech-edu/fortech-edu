@@ -58,6 +58,10 @@ test("technology and business profiles produce different pools", () => {
   assert.equal(technology.some((id) => business.includes(id)), false);
 });
 
+test("the bachelor-only catalog does not recommend programs for a master's profile", () => {
+  assert.deepEqual(getPrimaryMatches({ ...profileA, targetDegree: "Master" }), []);
+});
+
 test("budget changes ranking among otherwise relevant programs", () => {
   const candidates = programs.filter(({ id }) => ["aitu-computer-science", "hkust-computer-science"].includes(id));
   assert.equal(recommendPrograms(profileA, candidates)[0].program.id, "hkust-computer-science");

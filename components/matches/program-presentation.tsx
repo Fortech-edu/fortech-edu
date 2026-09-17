@@ -134,7 +134,7 @@ export function ProgramSources({ recommendation }: { recommendation: Recommendat
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {program.sources.map((source) => (
             <li key={`${source.type}:${source.url}`}>
-              <a href={source.url} target="_blank" rel="noopener noreferrer" className="block rounded-xl bg-forest-50 px-3 py-2.5 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
+              <a href={source.url} target="_blank" rel="noopener noreferrer" aria-label={`${source.title} (opens in a new tab)`} className="block rounded-xl bg-forest-50 px-3 py-2.5 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
                 <span className="mr-2 text-xs uppercase tracking-wide text-muted">{source.type}</span>{source.title}
               </a>
             </li>
