@@ -1,5 +1,25 @@
 import Link from "next/link";
 import { Brand } from "@/components/ui/brand";
+import { programs } from "@/data/programs";
+
+/**
+ * Coverage is derived from the dataset, never typed by hand.
+ * If a program is added or removed, the landing page stays truthful on its own.
+ */
+const coverage = {
+  programs: programs.length,
+  universities: new Set(programs.map((item) => item.universityName)).size,
+  countries: new Set(programs.map((item) => item.country).filter(Boolean)).size,
+  /** The two directions a student can pick in onboarding, not the finer program taxonomy. */
+  directions: ["Computer Science", "Business"],
+  verifiedOn: programs.find((item) => item.verificationDate)?.verificationDate ?? null,
+};
+
+const stats = [
+  [String(coverage.programs), "verified programs", "Each one checked against the university's own pages."],
+  [String(coverage.universities), "universities", "A curated sample, not a global catalogue."],
+  [String(coverage.countries), "countries", "Where those programs are taught."],
+] as const;
 
 const steps = [
   ["01", "Tell us about yourself", "Share your goals, academics, budget, and timeline."],
@@ -95,6 +115,53 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Scope stated up front: the case requires the coverage limit to be visible in the product, not only in the README. */}
+      <section className="border-t border-forest-100">
+        <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
+          <p className="text-sm font-bold uppercase tracking-[0.18em] text-forest-600">What is inside</p>
+          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">
+            A small, checked dataset beats a large, unchecked one.
+          </h2>
+          <p className="mt-4 max-w-2xl leading-7 text-muted">
+            Every requirement, fee and deadline in this product comes from an official university page,
+            and every program card links back to it. Where a university does not publish a clear value,
+            we show <span className="font-semibold text-forest-900">Unknown</span> instead of guessing.
+          </p>
+
+          <dl className="mt-9 grid gap-4 sm:grid-cols-3">
+            {stats.map(([value, label, detail]) => (
+              <div key={label} className="rounded-3xl border border-forest-100 bg-white p-6">
+                <dt className="text-4xl font-semibold tracking-tight text-forest-900 tabular-nums">{value}</dt>
+                <p className="mt-1 font-semibold text-forest-700">{label}</p>
+                <dd className="mt-2 text-sm leading-6 text-muted">{detail}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-4 rounded-3xl border border-sand-300/70 bg-sand-100/60 px-6 py-5">
+            <p className="font-semibold text-forest-900">Current limits, stated plainly</p>
+            <ul className="mt-3 grid gap-2 text-sm leading-6 text-forest-900 sm:grid-cols-2">
+              <li>Bachelor programs only.</li>
+              <li>Two study directions: {coverage.directions.join(" and ")}.</li>
+              <li>Fit Score is a profile match, never a probability of admission.</li>
+              <li>Requirements change — always confirm on the university page before applying.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-forest-100 bg-white/60">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <Brand />
+          <p className="text-sm leading-6 text-muted">
+            {coverage.verifiedOn
+              ? `Program data verified on ${coverage.verifiedOn}.`
+              : "Program data verified against official university sources."}{" "}
+            Built for the LOCUS Startup Hackathon 2026.
+          </p>
+        </div>
+      </footer>
     </main>
   );
 }
