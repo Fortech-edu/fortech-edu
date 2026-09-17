@@ -173,6 +173,38 @@ test("an added preferred country is structured", () => {
   ]);
 });
 
+test("a removed preferred country is structured", () => {
+  const impact = buildChangeImpact(
+    { ...profile, preferredCountries: ["Finland", "Netherlands"] },
+    profile,
+    [],
+    [],
+  );
+
+  assert.deepEqual(impact.changedInputs, [
+    {
+      input: "preferredCountries",
+      addedCountries: [],
+      removedCountries: ["Netherlands"],
+    },
+  ]);
+});
+
+test("unknown-to-known IELTS is recorded as a change without treating unknown as zero", () => {
+  const impact = buildChangeImpact(
+    { ...profile, ieltsScore: null },
+    { ...profile, ieltsScore: 6.5 },
+    [],
+    [],
+  );
+
+  assert.deepEqual(impact.changedInputs.at(-1), {
+    input: "ieltsScore",
+    previousValue: null,
+    nextValue: 6.5,
+  });
+});
+
 test("rank moving from four to two is moved up with one-based ranks", () => {
   const previous = ["a", "b", "c", "target"].map((id) => recommendation(id));
   const next = ["a", "target", "b", "c"].map((id) => recommendation(id));

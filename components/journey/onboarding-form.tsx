@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { programs } from "../../data/programs.ts";
+import { buildChangeImpact } from "../../lib/admissions/change-impact.ts";
+import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import {
   emptyProfile,
   numberOrNull,
@@ -13,6 +15,13 @@ import {
 import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadStoredProfile, saveStoredProfile } from "../../lib/storage/profile.ts";
 import type { StoredProfile } from "../../lib/storage/profile.ts";
+import {
+  clearEditBaseline,
+  clearRecentChangeImpact,
+  loadEditBaseline,
+  saveEditBaseline,
+  saveRecentChangeImpact,
+} from "../../lib/storage/change-impact.ts";
 import type { StudentProfile } from "../../types/admissions.ts";
 
 const stepDetails = [
@@ -196,6 +205,14 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
   const mounted = useRef(false);
 
   useEffect(() => {
+    if (initial?.completed) saveEditBaseline(initial.profile);
+    else if (!initial) {
+      clearEditBaseline();
+      clearRecentChangeImpact();
+    }
+  }, [initial]);
+
+  useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return;
@@ -228,6 +245,20 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
     }
 
     setCompleted(true);
+    const previousProfile = loadEditBaseline();
+    if (previousProfile) {
+      const impact = buildChangeImpact(
+        previousProfile,
+        profile,
+        getPrimaryMatches(previousProfile),
+        getPrimaryMatches(profile),
+      );
+      if (impact.programChanges.length > 0) saveRecentChangeImpact(impact);
+      else clearRecentChangeImpact();
+    } else {
+      clearRecentChangeImpact();
+    }
+    clearEditBaseline();
     saveStoredProfile(profile, 4, true);
     router.push("/diagnosis");
   }
