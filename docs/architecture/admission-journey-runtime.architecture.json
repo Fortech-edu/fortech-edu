@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Admission Journey Runtime Architecture",
+    "subtitle": "Local-first guidance with optional AI enhancement and per-user Supabase sync",
+    "locale": "en",
+    "output": "admission-journey-runtime.html",
+    "quality_profile": "showcase",
+    "legend": { "mode": "hidden" },
+    "repository": {
+      "url": "https://github.com/Fortech-edu/fortech-edu.git",
+      "provider": "github",
+      "revision": "3b9b99aa2f3f84f2f557a6cb3a13632423310c46"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "origin": [70, 110],
+    "cols": 4,
+    "gapX": 85,
+    "gapY": 50,
+    "cellW": 190,
+    "cellH": 78
+  },
+  "components": [
+    {
+      "id": "ai_layer",
+      "type": "backend",
+      "label": "AI Enhancement Layer",
+      "sublabel": "Next.js POST routes + validated fallback",
+      "tag": "Optional",
+      "row": 0,
+      "col": 0,
+      "size": [190, 78],
+      "sources": [
+        { "path": "app/api/ai/diagnosis/route.ts" },
+        { "path": "app/api/ai/explanation/route.ts" },
+        { "path": "lib/ai/service.ts" }
+      ]
+    },
+    {
+      "id": "ai_provider",
+      "type": "external",
+      "label": "Configured AI Provider",
+      "sublabel": "JSON chat endpoint",
+      "tag": "Optional",
+      "row": 0,
+      "col": 1,
+      "size": [190, 78],
+      "sources": [{ "path": "lib/ai/provider.ts" }]
+    },
+    {
+      "id": "next_ui",
+      "type": "frontend",
+      "label": "Browser / Next.js UI",
+      "sublabel": "Client components and user journey",
+      "brand": "next-js",
+      "row": 1,
+      "col": 0,
+      "size": [190, 78],
+      "sources": [
+        { "path": "components/journey/onboarding-form.tsx" },
+        { "path": "components/matches/matches-view.tsx" },
+        { "path": "components/journey/roadmap-view.tsx" }
+      ]
+    },
+    {
+      "id": "local_persistence",
+      "type": "database",
+      "label": "Local-first Persistence",
+      "sublabel": "localStorage + sessionStorage",
+      "tag": "Primary offline state",
+      "row": 1,
+      "col": 1,
+      "size": [190, 78],
+      "sources": [
+        { "path": "lib/storage/profile.ts" },
+        { "path": "lib/storage/journey.ts" },
+        { "path": "lib/storage/sync-events.ts" }
+      ]
+    },
+    {
+      "id": "recommendation_engine",
+      "type": "backend",
+      "label": "Recommendation Engine",
+      "sublabel": "Deterministic scoring and ranking",
+      "row": 1,
+      "col": 2,
+      "size": [190, 78],
+      "sources": [
+        { "path": "lib/admissions/recommend.ts" },
+        { "path": "lib/admissions/scoring.ts" }
+      ]
+    },
+    {
+      "id": "eligibility",
+      "type": "backend",
+      "label": "Eligibility",
+      "sublabel": "Deterministic requirement checks",
+      "row": 1,
+      "col": 3,
+      "size": [190, 78],
+      "sources": [{ "path": "lib/admissions/eligibility.ts" }]
+    },
+    {
+      "id": "program_catalog",
+      "type": "database",
+      "label": "Bundled Program Catalog",
+      "sublabel": "Demo program facts",
+      "row": 2,
+      "col": 2,
+      "size": [190, 78],
+      "sources": [{ "path": "data/programs.ts" }]
+    },
+    {
+      "id": "roadmap_generation",
+      "type": "backend",
+      "label": "Roadmap Generation",
+      "sublabel": "Deterministic ordered tasks",
+      "row": 2,
+      "col": 3,
+      "size": [190, 78],
+      "sources": [{ "path": "lib/admissions/roadmap.ts" }]
+    },
+    {
+      "id": "anonymous_auth",
+      "type": "security",
+      "label": "Supabase Anonymous Auth",
+      "sublabel": "Persisted anonymous session",
+      "brand": "supabase",
+      "row": 3,
+      "col": 1,
+      "size": [190, 78],
+      "sources": [
+        { "path": "lib/supabase/client.ts" },
+        { "path": "lib/supabase/sync.ts" },
+        { "path": "docs/supabase-setup.md" }
+      ]
+    },
+    {
+      "id": "profiles",
+      "type": "database",
+      "label": "profiles",
+      "sublabel": "Profile JSON, step, completion",
+      "tag": "RLS: auth.uid()",
+      "row": 3,
+      "col": 0,
+      "size": [190, 78],
+      "sources": [
+        { "path": "lib/supabase/sync.ts" },
+        { "path": "supabase/schema.sql" }
+      ]
+    },
+    {
+      "id": "journey_state",
+      "type": "database",
+      "label": "journey_state",
+      "sublabel": "Selection, compare, progress",
+      "tag": "RLS: auth.uid()",
+      "row": 3,
+      "col": 2,
+      "size": [190, 78],
+      "sources": [
+        { "path": "lib/storage/journey.ts" },
+        { "path": "lib/supabase/sync.ts" },
+        { "path": "supabase/schema.sql" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Browser trust boundary",
+      "wraps": [
+        "next_ui",
+        "local_persistence",
+        "recommendation_engine",
+        "eligibility",
+        "program_catalog",
+        "roadmap_generation"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "security-group",
+      "label": "Next.js server runtime",
+      "wraps": ["ai_layer"],
+      "pad": 24
+    },
+    {
+      "kind": "security-group",
+      "label": "Supabase project · per-user RLS",
+      "wraps": ["anonymous_auth", "profiles", "journey_state"],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    { "id": "ui_local_state", "from": "next_ui", "to": "local_persistence", "label": "local I/O", "variant": "emphasis" },
+    { "id": "profile_to_recommendations", "from": "local_persistence", "to": "recommendation_engine", "label": "profile" },
+    { "id": "catalog_to_recommendations", "from": "program_catalog", "to": "recommendation_engine", "label": "facts" },
+    { "id": "recommendations_to_eligibility", "from": "recommendation_engine", "to": "eligibility", "label": "rules" },
+    { "id": "recommendations_to_roadmap", "from": "recommendation_engine", "to": "roadmap_generation", "label": "chosen program + profile", "route": "orthogonal-v" },
+    { "id": "catalog_to_roadmap", "from": "program_catalog", "to": "roadmap_generation", "label": "facts" },
+    { "id": "ui_to_ai", "from": "next_ui", "to": "ai_layer", "label": "POST facts · receive safe wording", "variant": "dashed", "labelAt": [315, 215] },
+    { "id": "ai_to_provider", "from": "ai_layer", "to": "ai_provider", "label": "JSON", "variant": "dashed" },
+    { "id": "local_to_auth", "from": "local_persistence", "to": "anonymous_auth", "label": "session / anonymous sign-in", "variant": "security", "labelAt": [535, 368] },
+    { "id": "auth_to_profiles", "from": "anonymous_auth", "to": "profiles", "label": "sync", "variant": "security" },
+    { "id": "auth_to_journey", "from": "anonymous_auth", "to": "journey_state", "label": "sync", "variant": "security" }
+  ]
+}
