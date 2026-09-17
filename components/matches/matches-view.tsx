@@ -10,6 +10,7 @@ import {
   saveCompareSelection,
   toggleCompareSelection,
 } from "../../lib/storage/selection.ts";
+import { loadJourneyUpdatedAt } from "../../lib/storage/sync-events.ts";
 import { RecommendationCard } from "./program-presentation.tsx";
 
 export function MatchesView() {
@@ -29,7 +30,7 @@ function MatchesContent() {
     return <EmptyState title="No suitable matches yet" copy="No current demo programs match your selected field and eligibility constraints. Edit your profile to explore other options." href="/onboarding" action="Edit profile" />;
   }
 
-  return <RecommendationList recommendations={recommendations} />;
+  return <RecommendationList key={loadJourneyUpdatedAt()} recommendations={recommendations} />;
 }
 
 function RecommendationList({ recommendations }: { recommendations: ReturnType<typeof getPrimaryMatches> }) {

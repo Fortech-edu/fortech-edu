@@ -8,9 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test lib/admissions/recommend.test.ts lib/admissions/diagnosis.test.ts lib/admissions/matches.test.ts lib/admissions/presentation.test.ts lib/admissions/roadmap.test.ts lib/ai/service.test.ts lib/storage/selection.test.ts lib/storage/progress.test.ts"
+    "test": "node --test lib/admissions/recommend.test.ts lib/admissions/diagnosis.test.ts lib/admissions/matches.test.ts lib/admissions/presentation.test.ts lib/admissions/roadmap.test.ts lib/ai/service.test.ts lib/storage/selection.test.ts lib/storage/progress.test.ts lib/supabase/sync.test.ts"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.116.0",
     "next": "16.3.5",
     "react": "19.2.8",
     "react-dom": "19.2.8"

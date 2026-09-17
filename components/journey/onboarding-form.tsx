@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StudentProfile } from "../../types/admissions.ts";
 import type { StoredProfile } from "../../lib/storage/profile.ts";
@@ -84,7 +84,8 @@ export function OnboardingForm() {
     );
   }
 
-  return <OnboardingEditor initial={loadStoredProfile()} />;
+  const initial = loadStoredProfile();
+  return <OnboardingEditor key={initial?.updatedAt ?? "new"} initial={initial} />;
 }
 
 function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
@@ -92,8 +93,13 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
   const [profile, setProfile] = useState<StudentProfile>(initial?.profile ?? emptyProfile);
   const [step, setStep] = useState(initial?.step ?? 1);
   const [completed, setCompleted] = useState(initial?.completed ?? false);
+  const mounted = useRef(false);
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
     saveStoredProfile(profile, step, completed);
   }, [completed, profile, step]);
 

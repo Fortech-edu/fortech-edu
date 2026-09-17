@@ -17,6 +17,7 @@ import {
   toggleCompletedTask,
 } from "../../lib/storage/progress.ts";
 import { loadSelectedProgram } from "../../lib/storage/selection.ts";
+import { loadJourneyUpdatedAt } from "../../lib/storage/sync-events.ts";
 import type { Recommendation, RoadmapItem } from "../../types/admissions.ts";
 import { EligibilityBadge } from "../matches/program-presentation.tsx";
 
@@ -41,7 +42,7 @@ export function RoadmapView() {
 
   const recommendation = assessProgram(stored.profile, program);
   const items = generateRoadmap(stored.profile, program);
-  return <RoadmapContent recommendation={recommendation} items={items} />;
+  return <RoadmapContent key={`${stored.updatedAt}:${loadJourneyUpdatedAt()}`} recommendation={recommendation} items={items} />;
 }
 
 function RoadmapContent({ recommendation, items }: { recommendation: Recommendation; items: RoadmapItem[] }) {

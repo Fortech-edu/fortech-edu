@@ -1,6 +1,9 @@
+import { recordPersistenceChange } from "./sync-events.ts";
+import type { StorageWriteOptions } from "./sync-events.ts";
+
 export const ROADMAP_PROGRESS_KEY = "admission-journey:v1:roadmap-progress";
 
-type StoredProgress = {
+export type StoredProgress = {
   version: 1;
   byProgram: Record<string, string[]>;
 };
@@ -27,7 +30,7 @@ export function parseProgress(raw: string | null): StoredProgress {
   }
 }
 
-function loadProgress() {
+export function loadProgress() {
   if (typeof window === "undefined") return emptyProgress();
   try {
     return parseProgress(window.localStorage.getItem(ROADMAP_PROGRESS_KEY));
@@ -41,12 +44,24 @@ export function loadCompletedTaskIds(programId: string, validIds: readonly strin
   return (loadProgress().byProgram[programId] ?? []).filter((id) => valid.has(id));
 }
 
-export function saveCompletedTaskIds(programId: string, completedIds: readonly string[]) {
+export function saveCompletedTaskIds(programId: string, completedIds: readonly string[], options: StorageWriteOptions = {}) {
   if (typeof window === "undefined") return false;
   try {
     const current = loadProgress();
     current.byProgram[programId] = [...new Set(completedIds)];
     window.localStorage.setItem(ROADMAP_PROGRESS_KEY, JSON.stringify(current));
+    recordPersistenceChange("journey", options);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function saveProgress(progress: StoredProgress, options: StorageWriteOptions = {}) {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(ROADMAP_PROGRESS_KEY, JSON.stringify(progress));
+    recordPersistenceChange("journey", options);
     return true;
   } catch {
     return false;

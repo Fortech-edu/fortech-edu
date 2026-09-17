@@ -1,3 +1,6 @@
+import { recordPersistenceChange } from "./sync-events.ts";
+import type { StorageWriteOptions } from "./sync-events.ts";
+
 export const COMPARE_STORAGE_KEY = "admission-journey:v1:compare";
 export const SELECTED_PROGRAM_STORAGE_KEY = "admission-journey:v1:selected-program";
 
@@ -22,10 +25,11 @@ export function loadCompareSelection(validIds?: readonly string[]) {
   }
 }
 
-export function saveCompareSelection(ids: readonly string[]) {
+export function saveCompareSelection(ids: readonly string[], options: StorageWriteOptions = {}) {
   if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(COMPARE_STORAGE_KEY, JSON.stringify([...new Set(ids)].slice(0, 2)));
+    recordPersistenceChange("journey", options);
     return true;
   } catch {
     return false;
@@ -37,10 +41,12 @@ export function toggleCompareSelection(current: readonly string[], id: string) {
   return current.length < 2 ? [...current, id] : [...current];
 }
 
-export function saveSelectedProgram(id: string) {
+export function saveSelectedProgram(id: string | null, options: StorageWriteOptions = {}) {
   if (typeof window === "undefined") return false;
   try {
-    window.localStorage.setItem(SELECTED_PROGRAM_STORAGE_KEY, id);
+    if (id === null) window.localStorage.removeItem(SELECTED_PROGRAM_STORAGE_KEY);
+    else window.localStorage.setItem(SELECTED_PROGRAM_STORAGE_KEY, id);
+    recordPersistenceChange("journey", options);
     return true;
   } catch {
     return false;

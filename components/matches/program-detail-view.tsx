@@ -23,6 +23,7 @@ import {
 } from "./program-presentation.tsx";
 import { RecommendationEnhancement } from "../ai/enhancements.tsx";
 import type { StudentProfile } from "../../types/admissions.ts";
+import { loadJourneyUpdatedAt } from "../../lib/storage/sync-events.ts";
 
 export function ProgramDetailView({ programId }: { programId: string }) {
   const ready = useClientReady();
@@ -45,7 +46,7 @@ export function ProgramDetailView({ programId }: { programId: string }) {
     );
   }
 
-  return <ProgramDetail profile={profile} recommendation={recommendation} validIds={matches.map(({ program }) => program.id)} />;
+  return <ProgramDetail key={loadJourneyUpdatedAt()} profile={profile} recommendation={recommendation} validIds={matches.map(({ program }) => program.id)} />;
 }
 
 function ProgramDetail({ profile, recommendation, validIds }: { profile: StudentProfile; recommendation: ReturnType<typeof getPrimaryMatches>[number]; validIds: string[] }) {

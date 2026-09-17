@@ -15,7 +15,7 @@ export default function OnboardingPage() {
       <div className="mx-auto w-full max-w-3xl px-5 pb-16 pt-4 sm:px-8 sm:pt-8">
         <OnboardingForm />
         <p className="mt-5 text-center text-xs leading-5 text-muted">
-          Your draft is stored only in this browser. No account or external database is used.
+          Your draft is saved in this browser immediately. Cloud sync runs in the background when configured.
         </p>
       </div>
     </main>
