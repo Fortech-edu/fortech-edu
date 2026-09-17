@@ -8,13 +8,13 @@ export const metadata: Metadata = {
 
 export default function OnboardingPage() {
   return (
-    <main className="min-h-dvh bg-[linear-gradient(180deg,#f0f7f3_0,#f6f8f5_20rem)]">
-      <header className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8">
+    <main className="min-h-dvh bg-[linear-gradient(180deg,#eef6f1_0,#f6f8f5_24rem)]">
+      <header className="mx-auto w-full max-w-[1280px] px-5 py-5 sm:px-8 sm:py-7">
         <Brand />
       </header>
-      <div className="mx-auto w-full max-w-3xl px-5 pb-16 pt-4 sm:px-8 sm:pt-8">
+      <div className="mx-auto w-full max-w-[1280px] px-4 pb-12 pt-2 sm:px-8 sm:pb-16 sm:pt-4">
         <OnboardingForm />
-        <p className="mt-5 text-center text-xs leading-5 text-muted">
+        <p className="mt-5 text-center text-xs leading-5 text-muted lg:ml-[35%]">
           Your draft is saved in this browser immediately. Cloud sync runs in the background when configured.
         </p>
       </div>
