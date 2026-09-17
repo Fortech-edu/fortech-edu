@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { demoPrograms } from "../../data/programs.ts";
+import { programs } from "../../data/programs.ts";
 import { assessProgram } from "../../lib/admissions/recommend.ts";
 import {
   generateRoadmap,
@@ -35,9 +35,9 @@ export function RoadmapView() {
     return <EmptyState title="Choose a program first" copy="Select a program from your recommendations before building a roadmap." href="/matches" action="View matches" />;
   }
 
-  const program = demoPrograms.find(({ id }) => id === selectedId);
+  const program = programs.find(({ id }) => id === selectedId);
   if (!program) {
-    return <EmptyState title="Selected program is unavailable" copy="The saved program no longer exists in the current demo dataset." href="/matches" action="Choose another program" />;
+    return <EmptyState title="Selected program is unavailable" copy="The saved program no longer exists in the current verified dataset." href="/matches" action="Choose another program" />;
   }
 
   const recommendation = assessProgram(stored.profile, program);
@@ -109,7 +109,6 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
               <p className="text-xs text-muted">Profile match</p>
               <p className="text-xl font-semibold text-forest-900">{recommendation.fitScore} / 100</p>
             </div>
-            {program.isDemo && <span className="rounded-full bg-sand-100 px-3 py-1.5 text-xs font-bold text-amber-900">Demo data</span>}
           </div>
         </div>
         <nav className="mt-5 flex flex-col gap-2 border-t border-forest-100 pt-5 sm:flex-row" aria-label="Roadmap navigation">
@@ -135,7 +134,6 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">Step {index + 1} · {completed ? "Completed" : "To do"}</p>
-                        {program.isDemo && <span className="rounded-full bg-sand-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Demo data</span>}
                       </div>
                       <h3 className={`mt-1 text-lg font-semibold ${completed ? "text-forest-700 line-through decoration-forest-300" : "text-forest-900"}`}>{item.title}</h3>
                       <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{item.description}</p>

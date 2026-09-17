@@ -27,22 +27,30 @@ export type Requirement = {
   notes: string | null;
 };
 
+export type ProgramSource = {
+  type: "program" | "admissions" | "tuition" | "deadline";
+  title: string;
+  url: string;
+};
+
 export type UniversityProgram = {
   id: string;
   universityName: string;
   programName: string;
   field: string;
   country: string | null;
+  city: string | null;
   degreeLevel: string | null;
   tuition: number | null;
   tuitionCurrency: string | null;
   tuitionPeriod: "semester" | "year" | "program" | null;
+  tuitionNotes: string | null;
   academicRequirement: Requirement | null;
   ieltsRequirement: Requirement | null;
   satRequirement: Requirement | null;
   deadline: string | null;
-  sourceUrl: string | null;
-  isDemo: boolean;
+  sources: ProgramSource[];
+  verificationDate: string | null;
 };
 
 export type ScoreBreakdown = {

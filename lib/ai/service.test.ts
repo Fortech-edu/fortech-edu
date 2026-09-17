@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { POST as diagnosisPost } from "../../app/api/ai/diagnosis/route.ts";
-import { demoPrograms } from "../../data/programs.ts";
+import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
 import type { StudentProfile } from "../../types/admissions.ts";
 import { diagnoseProfile } from "../admissions/diagnosis.ts";
 import { assessProgram } from "../admissions/recommend.ts";

@@ -26,9 +26,8 @@ export const scoreComponents: ReadonlyArray<{
 
 export function formatRequirement(requirement: Requirement | null) {
   if (requirement?.isRequired === false) return "Not required";
-  if (requirement?.isRequired !== true || requirement.minimumScore === null) {
-    return "Unknown";
-  }
+  if (requirement?.isRequired !== true) return "Unknown";
+  if (requirement.minimumScore === null) return "Required; exact threshold unknown";
   return `${requirement.minimumScore}+`;
 }
 
@@ -47,7 +46,6 @@ export function formatScoreComponent(value: number | null) {
 }
 
 export function getProgramSource(program: UniversityProgram) {
-  return program.sourceUrl
-    ? { href: program.sourceUrl, label: `View source for ${program.programName}` }
-    : null;
+  const source = program.sources[0];
+  return source ? { href: source.url, label: source.title } : null;
 }

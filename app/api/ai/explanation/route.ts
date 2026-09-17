@@ -1,4 +1,4 @@
-import { demoPrograms } from "../../../../data/programs.ts";
+import { programs } from "../../../../data/programs.ts";
 import { assessProgram } from "../../../../lib/admissions/recommend.ts";
 import { getConfiguredProvider } from "../../../../lib/ai/provider.ts";
 import { isAIProfile, toStudentProfile } from "../../../../lib/ai/schemas.ts";
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid request" }, { status: 400 });
     }
 
-    const program = demoPrograms.find(({ id }) => id === body.programId);
+    const program = programs.find(({ id }) => id === body.programId);
     if (!program) return Response.json({ error: "Program not found" }, { status: 404 });
 
     const assessed = assessProgram(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { demoPrograms } from "../../data/programs.ts";
+import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 import { evaluateEligibility } from "./eligibility.ts";
 import { recommendPrograms } from "./recommend.ts";

@@ -108,7 +108,6 @@ function ComparisonCard({ recommendation, other }: { recommendation: Recommendat
       <CompareList title="Gaps" items={recommendation.gaps} />
 
       <div className="mt-6 border-t border-forest-100 pt-4 text-sm">
-        {program.isDemo && <span className="mr-2 inline-flex rounded-full bg-sand-100 px-2.5 py-1 text-xs font-bold text-amber-900">Demo data</span>}
         {source ? <a href={source.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-forest-700 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">{source.label}</a> : <span className="text-muted">No source link provided</span>}
       </div>
     </article>

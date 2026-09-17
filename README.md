@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Admission Journey
 
-## Getting Started
+Admission Journey turns a student profile into deterministic bachelor-program recommendations, eligibility guidance, comparisons, and an application roadmap. Fit Score is a profile-match score, not an admission probability. Gemini can enhance explanations when configured; the deterministic product remains the fallback.
 
-First, run the development server:
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verified program dataset
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Production recommendations use 18 bachelor programs verified from official university websites on **2026-09-17**:
 
-## Learn More
+- 11 technology programs and 7 business programs
+- 5 universities: Astana IT University, University of Twente, LUT University, Hong Kong University of Science and Technology, and Arizona State University
+- 5 represented countries or jurisdictions: Kazakhstan, Netherlands, Finland, Hong Kong, and United States
 
-To learn more about Next.js, take a look at the following resources:
+Each record links to its official program page and, when needed, separate official admissions, tuition, and deadline pages. Synthetic programs live only in `data/fixtures/demo-programs.ts` for deterministic tests and are not used in production.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Data policy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- A fact is recorded only when an official university source clearly supports it.
+- Missing values remain `null` and appear as **Unknown**. Missing SAT or IELTS information never becomes “not required.”
+- Qualification-specific or non-numeric academic rules remain descriptive; the app does not invent GPA conversions.
+- Unknown critical requirements keep eligibility at **Needs verification** and reduce data coverage.
+- Tuition preserves the published currency and applicant category. The app does not perform exchange-rate conversions.
+- Deadlines are included only when the applicable date is clear. Users should recheck every source before applying.
 
-## Deploy on Vercel
+### Limitations
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This is a curated sample, not a global catalog. Fees, requirements, applicant categories, curricula, and deadlines can change after the verification date. Some university pages publish requirements by qualification or residency, so a single universal value is intentionally unavailable. Recommendations do not estimate admission probability.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Quality checks
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm test
+npm run build
+git diff --check
+```

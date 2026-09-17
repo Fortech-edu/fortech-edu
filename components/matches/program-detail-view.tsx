@@ -16,6 +16,7 @@ import {
 import {
   EligibilityBadge,
   ProgramFacts,
+  ProgramSources,
   ReasonsAndGaps,
   ScoreBreakdown,
   ScoreSummary,
@@ -102,6 +103,8 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
           <h2 className="text-xl font-semibold text-forest-900">Score breakdown</h2>
           <div className="mt-4"><ScoreBreakdown recommendation={recommendation} /></div>
         </section>
+
+        <ProgramSources recommendation={recommendation} />
 
         <div className="mt-7 flex flex-col gap-2 sm:flex-row">
           <button type="button" onClick={toggle} disabled={selected.length === 2 && !isSelected} aria-pressed={isSelected} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">{isSelected ? "Remove from compare" : "Compare"}</button>

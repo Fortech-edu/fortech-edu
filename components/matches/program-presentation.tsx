@@ -5,7 +5,6 @@ import {
   formatRequirement,
   formatScoreComponent,
   formatTuition,
-  getProgramSource,
   scoreComponents,
 } from "../../lib/admissions/presentation.ts";
 
@@ -68,6 +67,7 @@ export function ProgramFacts({ recommendation }: { recommendation: Recommendatio
   const { program } = recommendation;
   const facts = [
     ["Country", program.country ?? "Unknown"],
+    ["City", program.city ?? "Unknown"],
     ["Field", program.field || "Unknown"],
     ["Tuition", formatTuition(program)],
     ["IELTS", formatRequirement(program.ieltsRequirement)],
@@ -115,16 +115,39 @@ function List({ title, items, marker, markerClass }: { title: string; items: str
 
 export function SourceState({ recommendation }: { recommendation: Recommendation }) {
   const { program } = recommendation;
-  const source = getProgramSource(program);
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      {program.isDemo && <span className="rounded-full bg-sand-100 px-2.5 py-1 font-bold text-amber-900">Demo data</span>}
-      {source ? (
-        <a href={source.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-          {source.label}
-        </a>
-      ) : <span className="text-muted">No source link provided</span>}
+      <span className="rounded-full bg-forest-50 px-2.5 py-1 font-semibold text-forest-700">
+        {program.verificationDate ? `Verified ${program.verificationDate}` : "Verification date unknown"}
+      </span>
     </div>
+  );
+}
+
+export function ProgramSources({ recommendation }: { recommendation: Recommendation }) {
+  const { program } = recommendation;
+  return (
+    <section className="mt-7 border-t border-forest-100 pt-7">
+      <h2 className="text-xl font-semibold text-forest-900">Official sources</h2>
+      <p className="mt-2 text-sm text-muted">Verified {program.verificationDate ?? "on an unknown date"}. Requirements and fees can change.</p>
+      {program.sources.length ? (
+        <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+          {program.sources.map((source) => (
+            <li key={`${source.type}:${source.url}`}>
+              <a href={source.url} target="_blank" rel="noopener noreferrer" className="block rounded-xl bg-forest-50 px-3 py-2.5 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
+                <span className="mr-2 text-xs uppercase tracking-wide text-muted">{source.type}</span>{source.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="mt-3 text-sm text-muted">No official source link is available.</p>}
+      <div className="mt-4 space-y-2 text-sm leading-6 text-muted">
+        {program.tuitionNotes && <p><span className="font-semibold text-ink">Tuition note:</span> {program.tuitionNotes}</p>}
+        {[program.academicRequirement, program.ieltsRequirement, program.satRequirement].map((requirement) => requirement?.notes && (
+          <p key={requirement.label}><span className="font-semibold text-ink">{requirement.label} note:</span> {requirement.notes}</p>
+        ))}
+      </div>
+    </section>
   );
 }
 
