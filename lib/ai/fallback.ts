@@ -14,8 +14,7 @@ export function diagnosisFallback(input: DiagnosisAIInput): DiagnosisAIOutput {
     summary: deterministicDiagnosis.gaps.length
       ? "Your profile has a useful foundation, with a few details and actions still to address."
       : "Your profile has a clear foundation for exploring relevant programs.",
-    strengths: deterministicDiagnosis.strengths.slice(0, 4),
-    actions: [...deterministicDiagnosis.gaps, ...deterministicDiagnosis.missingInformation.map((item) => `Verify ${item.toLowerCase()}`)].slice(0, 4),
+    focus: deterministicDiagnosis.gaps.slice(0, 2),
   };
 }
 

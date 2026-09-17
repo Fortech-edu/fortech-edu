@@ -8,6 +8,10 @@ import { assessProgram } from "../admissions/recommend.ts";
 import { getConfiguredProvider } from "./provider.ts";
 import type { AIProvider } from "./provider.ts";
 import { createAIResultCacheKey } from "./cache.ts";
+import {
+  diagnosisExplanationCopy,
+  parseDiagnosisResult,
+} from "./diagnosis-presentation.ts";
 import { toAIProfile } from "./schemas.ts";
 import type { RecommendationAIInput } from "./schemas.ts";
 import { createAIService } from "./service.ts";
@@ -82,6 +86,36 @@ test("invalid AI response returns fallback", async () => {
   assert.equal(result.source, "fallback");
 });
 
+test("valid diagnosis AI output preserves source and allows an empty focus list", async () => {
+  const content = {
+    summary: "Your known profile details support a focused program review.",
+    focus: [],
+  };
+  const result = await createAIService(providerReturning(content), { log: () => undefined }).generateDiagnosis(diagnosisInput);
+
+  assert.equal(result.source, "ai");
+  assert.deepEqual(result.content, content);
+  assert.equal(parseDiagnosisResult(result, diagnosisInput)?.source, "ai");
+});
+
+test("diagnosis explanation copy distinguishes loading, AI, and fallback", () => {
+  assert.equal(diagnosisExplanationCopy(null).disclosure.includes("Creating"), true);
+  assert.equal(diagnosisExplanationCopy("ai").title, "AI-assisted explanation");
+  assert.equal(diagnosisExplanationCopy("fallback").title, "Profile explanation");
+  assert.equal(diagnosisExplanationCopy("fallback").disclosure.includes("deterministic results are unchanged"), true);
+});
+
+test("diagnosis AI cannot replace deterministic diagnosis", async () => {
+  const result = await createAIService(providerReturning({
+    summary: "A rewritten explanation.",
+    focus: [],
+    deterministicDiagnosis: { strengths: [], gaps: [], missingInformation: [] },
+  }), { log: () => undefined }).generateDiagnosis(diagnosisInput);
+
+  assert.equal(result.source, "fallback");
+  assert.deepEqual(diagnosisInput.deterministicDiagnosis, diagnoseProfile(profile));
+});
+
 test("AI output cannot add or modify Fit Score", async () => {
   const input = recommendationInput();
   const result = await createAIService(providerReturning({
@@ -132,10 +166,30 @@ test("prompt-like profile text cannot override factual constraints", async () =>
   };
   const result = await createAIService(providerReturning({
     summary: "You have a 95% chance of admission.",
-    strengths: [],
-    actions: [],
+    focus: [],
   }), { log: () => undefined }).generateDiagnosis(injected);
   assert.equal(result.source, "fallback");
+});
+
+test("unknown profile fields remain unknown in fallback without probability language", async () => {
+  const unknownProfile = {
+    ...profile,
+    preferredCountries: [],
+    gpa: null,
+    ieltsScore: null,
+    satScore: null,
+    annualBudget: null,
+  };
+  const input = {
+    profile: toAIProfile(unknownProfile),
+    deterministicDiagnosis: diagnoseProfile(unknownProfile),
+  };
+  const result = await createAIService(null).generateDiagnosis(input);
+
+  assert.equal(result.source, "fallback");
+  assert.ok(input.deterministicDiagnosis.missingInformation.includes("IELTS score"));
+  assert.ok(input.deterministicDiagnosis.missingInformation.includes("SAT score"));
+  assert.equal(/admission probability|chance of admission/i.test(JSON.stringify(result.content)), false);
 });
 
 test("AI result cache key changes when profile inputs change", () => {

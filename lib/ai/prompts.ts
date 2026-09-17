@@ -8,8 +8,8 @@ When a fact is null or unknown, say it is unknown or needs verification.
 Return only the requested short JSON object with no markdown or extra keys.`;
 
 export const diagnosisPrompt = `Rewrite the deterministic profile diagnosis in calm, concise language.
-Return {"summary": string, "strengths": string[], "actions": string[]}.
-Keep each array to at most four items.${FACT_RULES}`;
+Return {"summary": string, "focus": string[]}.
+The focus array may contain at most two priorities drawn only from deterministic gaps. Do not add new tasks or facts.${FACT_RULES}`;
 
 export const recommendationPrompt = `Explain why the supplied program matches the supplied profile.
 Return {"summary": string, "whyItFits": string[], "watchOutFor": string[]}.
