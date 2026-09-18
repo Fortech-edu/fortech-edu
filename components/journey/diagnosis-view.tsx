@@ -207,6 +207,8 @@ function DiagnosisContent({
 
       <DiagnosisSummaryPanel diagnosis={diagnosis} />
 
+      <DiagnosisEnhancement profile={profile} program={program} diagnosis={diagnosis} />
+
       <div className="editorial-section p-6 sm:p-8">
         <ProfileProgramComparison profile={profile} recommendation={recommendation} criteria={diagnosis.requirementCoverage} eyebrow="Requirement coverage" />
       </div>
@@ -220,8 +222,6 @@ function DiagnosisContent({
         <p className="mt-2 max-w-2xl leading-7 text-muted">Known profile information from the existing deterministic diagnosis. Activities are planning context only and never change Fit Score.</p>
         <AnalysisItems items={profileDiagnosis.strengths} marker="✓" empty="No known profile strengths are available yet." />
       </section>
-
-      <DiagnosisEnhancement profile={profile} diagnosis={profileDiagnosis} />
     </div>
   );
 }

@@ -9,12 +9,19 @@ import type {
 } from "./schemas.ts";
 
 export function diagnosisFallback(input: DiagnosisAIInput): DiagnosisAIOutput {
-  const { deterministicDiagnosis } = input;
+  const { programName, universityName } = input.programFacts;
+  const target = `${programName} at ${universityName}`;
+  const gap = input.biggestConfirmedGap;
+  const verification = input.verificationItems[0];
+  const nextAction = input.nextAction;
   return {
-    summary: deterministicDiagnosis.gaps.length
-      ? "Your profile has a useful foundation, with a few details and actions still to address."
-      : "Your profile has a clear foundation for exploring relevant programs.",
-    focus: deterministicDiagnosis.gaps.slice(0, 2),
+    summary: gap
+      ? `For ${target}, ${gap.label} is a confirmed gap: ${gap.profileValue} current against ${gap.programValue}. ${gap.detail}`
+      : `For ${target}, no provided value is below a directly comparable published minimum. This does not guarantee admission.`,
+    focus: [
+      nextAction ? `Next action: ${nextAction.title}. ${nextAction.description}` : null,
+      verification ? `Needs verification: ${verification.label}. ${verification.detail}` : null,
+    ].filter((item): item is string => item !== null),
   };
 }
 

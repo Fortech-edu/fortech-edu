@@ -1,11 +1,16 @@
 import type {
-  Diagnosis,
   EligibilityStatus,
   Recommendation,
   RoadmapItem,
   StudentProfile,
   UniversityProgram,
 } from "../../types/admissions.ts";
+import type {
+  DiagnosisVerificationItem,
+  TargetDiagnosis,
+} from "../admissions/diagnosis.ts";
+import type { InstantDiagnosisAction } from "../admissions/instant-diagnosis.ts";
+import type { ProfileProgramCriterion } from "../admissions/presentation.ts";
 
 export type AIProfile = Pick<
   StudentProfile,
@@ -23,7 +28,11 @@ export type AIProfile = Pick<
 
 export type DiagnosisAIInput = {
   profile: AIProfile;
-  deterministicDiagnosis: Diagnosis;
+  programFacts: Pick<UniversityProgram, "id" | "universityName" | "programName" | "country">;
+  requirementCoverage: ProfileProgramCriterion[];
+  biggestConfirmedGap: ProfileProgramCriterion | null;
+  verificationItems: DiagnosisVerificationItem[];
+  nextAction: Pick<InstantDiagnosisAction, "title" | "basis" | "relatedRequirement" | "description"> | null;
 };
 
 export type RecommendationAIInput = {
@@ -86,6 +95,28 @@ export function toAIProfile(profile: StudentProfile): AIProfile {
     satScore,
     annualBudget,
     budgetCurrency,
+  };
+}
+
+export function toDiagnosisAIInput(
+  profile: StudentProfile,
+  program: UniversityProgram,
+  diagnosis: TargetDiagnosis,
+): DiagnosisAIInput {
+  const { id, universityName, programName, country } = program;
+  const nextAction = diagnosis.priorities[0];
+  return {
+    profile: toAIProfile(profile),
+    programFacts: { id, universityName, programName, country },
+    requirementCoverage: diagnosis.requirementCoverage,
+    biggestConfirmedGap: diagnosis.biggestGaps[0] ?? null,
+    verificationItems: diagnosis.unknowns,
+    nextAction: nextAction ? {
+      title: nextAction.title,
+      basis: nextAction.basis,
+      relatedRequirement: nextAction.relatedRequirement,
+      description: nextAction.description,
+    } : null,
   };
 }
 
@@ -155,7 +186,7 @@ export function isFactuallySafe(
   input: DiagnosisAIInput | RecommendationAIInput | RoadmapTaskAIInput,
 ) {
   const text = collectText(output).toLowerCase();
-  if (/acceptance rate|admission probability|chance of admission|guaranteed|scholarship|will be admitted|will get in/.test(text)) return false;
+  if (/acceptance rate|acceptance chance|admission (?:probability|chance|odds)|chance of admission|likely (?:accepted|admitted)|guarantee(?:d)?|scholarship|will be admitted|will get in/.test(text)) return false;
 
   const knownNumbers = new Set((JSON.stringify(input).match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map(normalizeNumber));
   const outputNumbers = text.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
@@ -172,7 +203,14 @@ export function isFactuallySafe(
     if (Object.entries(labels).some(([status, label]) => status !== current && text.includes(label))) return false;
   }
 
-  if ("programFacts" in input) {
+  if (
+    "requirementCoverage" in input &&
+    !diagnosisStatusesAreSafe(text, input.requirementCoverage, input.verificationItems)
+  ) {
+    return false;
+  }
+
+  if ("recommendation" in input) {
     const facts = input.programFacts;
     if (!unknownMentionsAreSafe(text, facts.tuition === null, /tuition|fees?|cost/)) return false;
     if (!unknownMentionsAreSafe(text, facts.deadline === null, /deadline|application date/)) return false;
@@ -209,6 +247,59 @@ function normalizeNumber(value: string) {
   return String(Number(value.replaceAll(",", "")));
 }
 
+function diagnosisStatusesAreSafe(
+  text: string,
+  criteria: ProfileProgramCriterion[],
+  verificationItems: DiagnosisVerificationItem[],
+) {
+  const sentences = text.split(/[.!?]/);
+  const criteriaAreSafe = criteria.every((criterion) => {
+    const topic = diagnosisTopic(criterion.key);
+    const mentions = sentences.filter((sentence) => topic.test(sentence));
+
+    if (criterion.status === "Action needed") {
+      return mentions.every((sentence) =>
+        !/\b(?:requirements?\s+)?(?:is|are)\s+(?:met|satisfied|matched|ready)\b|\b(?:meets|satisfies|matches)\b/i.test(sentence),
+      );
+    }
+    if (criterion.status === "Match") {
+      return mentions.every((sentence) =>
+        !/\b(?:below|unmet|does not meet|action needed|confirmed gap)\b/i.test(sentence) ||
+        /\b(?:no|not|isn't|is not|no longer)\b[^.!?]{0,35}\b(?:gap|below|unmet|action needed)\b/i.test(sentence),
+      );
+    }
+    if (criterion.status === "Needs verification" || criterion.status === "Not comparable") {
+      return mentions.every((sentence) =>
+        /unknown|verif(?:y|ied|ication)|confirm|not comparable|not (?:provided|available|specified|listed)/i.test(sentence),
+      );
+    }
+    return true;
+  });
+  if (!criteriaAreSafe) return false;
+
+  return verificationItems.every((item) => {
+    const mentions = sentences.filter((sentence) => diagnosisTopic(item.key).test(sentence));
+    return mentions.every((sentence) =>
+      /unknown|verif(?:y|ied|ication)|confirm|check|not comparable|not (?:provided|available|specified|listed)/i.test(sentence),
+    );
+  });
+}
+
+function diagnosisTopic(key: string): RegExp {
+  const topics: Record<string, RegExp> = {
+    academic: /\bacademic\b|\bgpa\b|\bdiploma\b/i,
+    documents: /\bdocuments?\b|motivation letter|recommendation letters?/i,
+    field: /study field|intended field/i,
+    ielts: /\bielts\b|english requirement/i,
+    languageOfInstruction: /language of instruction|teaching language/i,
+    sat: /\bsat\b|standardized test/i,
+    timeline: /\btimeline\b|\bintake\b|\bdeadline\b|application date/i,
+    tuition: /\btuition\b|\bfees?\b|\bcost\b|\bbudget\b/i,
+    currentStudyStage: /study stage|school year|grade level/i,
+  };
+  return topics[key] ?? new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+}
+
 function requirementUnknown(requirement: UniversityProgram["ieltsRequirement"]) {
   return requirement === null || requirement.isRequired === null || (requirement.isRequired && requirement.minimumScore === null);
 }
@@ -216,5 +307,5 @@ function requirementUnknown(requirement: UniversityProgram["ieltsRequirement"]) 
 function unknownMentionsAreSafe(text: string, unknown: boolean, topic: RegExp) {
   if (!unknown) return true;
   const mentions = text.split(/[.!?]/).filter((sentence) => topic.test(sentence));
-  return mentions.every((sentence) => /unknown|verif(?:y|ication)|confirm|not (?:provided|available|specified|listed)/.test(sentence));
+  return mentions.every((sentence) => /unknown|verif(?:y|ied|ication)|confirm|not (?:provided|available|specified|listed)/.test(sentence));
 }
