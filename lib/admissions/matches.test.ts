@@ -39,10 +39,10 @@ const profileC: StudentProfile = {
   budgetCurrency: "EUR",
 };
 
-test("production recommendations use 18 sourced real programs", () => {
-  assert.equal(programs.length, 18);
-  assert.equal(new Set(programs.map(({ universityName }) => universityName)).size, 5);
-  assert.equal(new Set(programs.map(({ country }) => country)).size, 5);
+test("production recommendations use 58 sourced real programs across 45 universities and 11 countries", () => {
+  assert.equal(programs.length, 58);
+  assert.equal(new Set(programs.map(({ universityName }) => universityName)).size, 45);
+  assert.equal(new Set(programs.map(({ country }) => country)).size, 11);
   // Most records share one baseline verification pass; a small set of
   // demo-critical programs was re-verified later against official sources
   // (see docs/DEMO_PROGRAM_DATA_AUDIT.md) and carries a newer date.
