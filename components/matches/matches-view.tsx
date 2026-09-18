@@ -21,7 +21,7 @@ import {
   toggleCompareSelection,
 } from "../../lib/storage/selection.ts";
 import { loadJourneyUpdatedAt } from "../../lib/storage/sync-events.ts";
-import { RecommendationCard } from "./program-presentation.tsx";
+import { CompactRecommendationRow as RecommendationCard } from "./compact-recommendation-row.tsx";
 
 export function MatchesView() {
   const ready = useClientReady();
@@ -46,7 +46,10 @@ function MatchesContent() {
 function RecommendationList({ profile, recommendations, impact }: { profile: NonNullable<ReturnType<typeof loadStoredProfile>>["profile"]; recommendations: ReturnType<typeof getPrimaryMatches>; impact: ChangeImpact | null }) {
   const validIds = recommendations.map(({ program }) => program.id);
   const [selected, setSelected] = useState(() => loadCompareSelection(validIds));
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const recentChanges = new Map(impact?.programChanges.map((change) => [change.programId, change]));
+  const universityCount = new Set(recommendations.map(({ program }) => program.universityName)).size;
+  const countryCount = new Set(recommendations.map(({ program }) => program.country).filter(Boolean)).size;
 
   function toggle(id: string) {
     const next = toggleCompareSelection(selected, id);
@@ -66,35 +69,27 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
 
   return (
     <div className="matches-view space-y-8">
-      <section className="product-hero" aria-labelledby="matches-title">
-        <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(18rem,.75fr)]">
-          <div className="p-6 sm:p-9">
-            <nav aria-label="Profile journey" className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-100">Profile <span aria-hidden="true">→</span> Diagnosis <span aria-hidden="true">→</span> <span className="text-white">Matches</span></nav>
-            <h1 id="matches-title" className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.92] sm:text-6xl lg:text-7xl">Programs for your profile</h1>
-            <p className="mt-4 max-w-2xl leading-7 text-forest-100">Ranked by the existing deterministic matching system: eligibility, then Fit Score, then data coverage.</p>
-            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white">Fit Score measures profile alignment — not admission probability.</p>
-            <Link href="/onboarding" className="mt-6 inline-flex min-h-11 items-center rounded-full border border-white/35 px-5 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Edit profile</Link>
+      <section className="editorial-section p-5 sm:p-7" aria-labelledby="matches-title">
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-brand">Deterministic shortlist</p>
+            <h1 id="matches-title" className="mt-2 text-3xl font-semibold text-text-primary sm:text-4xl">Programs for your profile</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">Ranked by eligibility, Fit Score, then data coverage. Fit is profile alignment, not admission probability.</p>
           </div>
-          <div className="border-t border-white/15 bg-white/7 p-6 sm:p-8 lg:border-l lg:border-t-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-100">Profile in use</p>
-            <dl className="mt-5 space-y-5">
-              <ProfileContext label="Field" value={profile.intendedField ?? "Not provided"} />
-              <ProfileContext label="Countries" value={profile.preferredCountries.join(" + ") || "Not provided"} />
-              <ProfileContext label="Intake" value={profile.targetIntake ?? "Not provided"} />
-            </dl>
-          </div>
+          <Link href="/onboarding" className="product-button-secondary shrink-0">Edit profile</Link>
         </div>
+        <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-border pt-5 sm:max-w-xl">
+          <ProfileContext label="Programs" value={String(recommendations.length)} />
+          <ProfileContext label="Universities" value={String(universityCount)} />
+          <ProfileContext label="Countries" value={String(countryCount)} />
+        </dl>
+        <details className="mt-4 text-sm text-text-muted">
+          <summary className="min-h-11 cursor-pointer py-2 font-semibold text-text-primary">How ranking works</summary>
+          <p className="max-w-3xl pb-2">Eligibility is evaluated first, followed by deterministic Fit Score and known-data coverage. Unknown facts stay neutral and require verification.</p>
+        </details>
       </section>
 
       {impact && impact.programChanges.length > 0 ? <ImpactPanel impact={impact} /> : null}
-
-      <div className="flex items-end justify-between gap-4 px-1 pt-2">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Ranked shortlist</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-forest-900">{recommendations.length} programs to review</h2>
-        </div>
-        <p className="hidden text-sm text-muted sm:block">Highest-ranked first</p>
-      </div>
 
       <aside id="comparison-selection" className="comparison-bar p-4 sm:p-5" aria-label="Comparison selection">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -114,7 +109,7 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
                     key={prog.id}
                     className="inline-flex items-center gap-1.5 rounded-full border border-forest-200 bg-white px-3 py-1 text-xs font-medium text-forest-900 shadow-sm"
                   >
-                    <span className="truncate max-w-[200px] sm:max-w-[260px]">{prog.programName}</span>
+                    <span className="truncate max-w-[200px] sm:max-w-[260px]">{prog.universityName}</span>
                     <button
                       type="button"
                       onClick={() => toggle(prog.id)}
@@ -161,19 +156,23 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
         </div>
       </aside>
 
-      {recommendations.map((recommendation, index) => (
-        <RecommendationCard
-          key={recommendation.program.id}
-          recommendation={recommendation}
-          profile={profile}
-          rank={index + 1}
-          recentChange={recentChangeLabel(recentChanges.get(recommendation.program.id))}
-          selected={selected.includes(recommendation.program.id)}
-          disabled={selected.length >= 2 && !selected.includes(recommendation.program.id)}
-          compareReady={selected.length === 2}
-          onCompare={() => toggle(recommendation.program.id)}
-        />
-      ))}
+      <div className="space-y-2" aria-label="Ranked program results">
+        {recommendations.map((recommendation, index) => (
+          <RecommendationCard
+            key={recommendation.program.id}
+            recommendation={recommendation}
+            profile={profile}
+            rank={index + 1}
+            recentChange={recentChangeLabel(recentChanges.get(recommendation.program.id))}
+            selected={selected.includes(recommendation.program.id)}
+            disabled={selected.length >= 2 && !selected.includes(recommendation.program.id)}
+            compareReady={selected.length === 2}
+            onCompare={() => toggle(recommendation.program.id)}
+            expanded={expandedId === recommendation.program.id}
+            onExpand={() => setExpandedId((current) => current === recommendation.program.id ? null : recommendation.program.id)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -181,8 +180,8 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
 function ProfileContext({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-forest-100">{label}</dt>
-      <dd className="mt-1 break-words font-semibold text-white">{value}</dd>
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-text-muted">{label}</dt>
+      <dd className="mt-1 break-words text-xl font-semibold text-text-primary">{value}</dd>
     </div>
   );
 }

@@ -49,21 +49,8 @@ export function ProductShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* Right utility cluster: Future language indicator + Profile action */}
+          {/* Profile action and mobile navigation */}
           <div className="flex items-center gap-3">
-            {/* Reserved logical slot for future language selector (EN / RU / KZ) */}
-            <div
-              className="hidden md:inline-flex items-center gap-1 rounded-lg border border-[#D7E7FA] bg-[#EDF4FD] px-2.5 py-1 text-xs font-semibold text-[#64748B]"
-              title="Language selection (EN / RU / KZ coming soon)"
-              aria-label="Language selector: English active"
-            >
-              <span className="text-[#1677FF] font-bold">EN</span>
-              <span className="text-[#B7D2F0]">/</span>
-              <span className="opacity-60">RU</span>
-              <span className="text-[#B7D2F0]">/</span>
-              <span className="opacity-60">KZ</span>
-            </div>
-
             <Link
               href="/onboarding"
               className={`inline-flex min-h-9 items-center justify-center rounded-lg px-4 text-xs font-semibold transition shadow-xs ${
@@ -116,16 +103,6 @@ export function ProductShell({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
-            <div className="pt-2 pb-1 border-t border-[#D7E7FA] flex items-center justify-between text-xs text-[#64748B] px-3">
-              <span>Language:</span>
-              <div className="flex items-center gap-1 font-semibold">
-                <span className="text-[#1677FF] font-bold">EN</span>
-                <span>/</span>
-                <span className="opacity-60">RU</span>
-                <span>/</span>
-                <span className="opacity-60">KZ</span>
-              </div>
-            </div>
           </nav>
         )}
       </header>

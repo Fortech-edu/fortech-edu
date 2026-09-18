@@ -59,19 +59,6 @@ export default function Home() {
               Why Fortech
             </a>
 
-            {/* Reserved slot for future language selector */}
-            <div
-              className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1 text-xs font-semibold text-[#9FB6D9]"
-              title="Language selection (EN / RU / KZ coming soon)"
-              aria-label="Language selector: English active"
-            >
-              <span className="text-[#38BDF8] font-bold">EN</span>
-              <span className="text-white/25">/</span>
-              <span className="opacity-60">RU</span>
-              <span className="text-white/25">/</span>
-              <span className="opacity-60">KZ</span>
-            </div>
-
             <Link
               href="/onboarding"
               className="landing-button inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-xs font-semibold sm:text-sm"
@@ -156,7 +143,7 @@ export default function Home() {
       </section>
 
       {/* Section 02: One Connected Journey ("How it works") */}
-      <section id="journey" className="scroll-mt-16 border-b border-[#D7E7FA] bg-white px-4 py-16 sm:px-8 sm:py-24 lg:px-10 lg:py-28">
+      <section id="journey" className="editorial-reveal scroll-mt-16 border-b border-[#D7E7FA] bg-white px-4 py-16 sm:px-8 sm:py-24 lg:px-10 lg:py-28">
         <div className="mx-auto grid w-full max-w-[1440px] gap-12 lg:grid-cols-[minmax(18rem,.72fr)_minmax(0,1.28fr)] lg:gap-16">
           <div className="lg:sticky lg:top-28 lg:self-start">
             <Label>02 / One connected journey</Label>
@@ -186,7 +173,7 @@ export default function Home() {
       </section>
 
       {/* Section 03: The Trust Model ("Why Fortech") */}
-      <section id="why-fortech" className="scroll-mt-16 bg-[#081A33] px-4 py-16 sm:px-8 sm:py-24 lg:px-10 lg:py-28 text-white">
+      <section id="why-fortech" className="editorial-reveal scroll-mt-16 bg-[#081A33] px-4 py-16 sm:px-8 sm:py-24 lg:px-10 lg:py-28 text-white">
         <div className="mx-auto w-full max-w-[1440px]">
           <Label light>03 / The trust model</Label>
           <h2 className="mt-4 max-w-4xl text-3xl font-bold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl">
@@ -223,7 +210,7 @@ export default function Home() {
       </section>
 
       {/* Section 04: Next Step CTA */}
-      <section className="bg-[#F5F9FF] px-4 py-16 sm:px-8 sm:py-24 lg:px-10">
+      <section className="editorial-reveal bg-[#F5F9FF] px-4 py-16 sm:px-8 sm:py-24 lg:px-10">
         <div className="mx-auto w-full max-w-[1440px]">
           <div className="rounded-2xl border border-[#D7E7FA] bg-white p-8 sm:p-12 lg:p-16 shadow-card">
             <Label>04 / Your next step</Label>

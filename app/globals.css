@@ -362,6 +362,121 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.match-result {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  box-shadow: 0 1px 2px rgba(8, 26, 51, 0.03);
+  transition: border-color var(--motion-fast) var(--ease-control), box-shadow var(--motion-fast) var(--ease-control);
+}
+
+.match-result:hover,
+.match-result.is-expanded {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-subtle);
+}
+
+.match-result-trigger {
+  display: grid;
+  width: 100%;
+  min-height: 100px;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto 1.5rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  text-align: left;
+}
+
+.match-result-trigger:hover {
+  background: var(--brand-tint);
+}
+
+.match-rank {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.match-result-score {
+  display: grid;
+  justify-items: end;
+  gap: 0.25rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.match-result-score strong {
+  font-size: 1.125rem;
+}
+
+.match-result-score small {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.match-chevron {
+  color: var(--brand);
+  font-size: 1.25rem;
+  transition: transform var(--motion-fast) var(--ease-control);
+}
+
+.match-result-details {
+  border-top: 1px solid var(--border);
+  padding: 1.25rem;
+  animation: expand-details 240ms var(--ease-editorial) both;
+}
+
+.ai-advisor-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+.ai-advisor-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--cyan);
+  content: "";
+}
+
+.change-impact-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--brand-bright);
+  border-radius: 16px;
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--brand-tint) 100%);
+  box-shadow: var(--shadow-subtle);
+  animation: expand-details 360ms var(--ease-editorial) both;
+}
+
+.change-impact-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--cyan);
+  content: "";
+}
+
+.roadmap-context {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+.comparison-sticky-head {
+  position: sticky;
+  top: 4rem;
+  z-index: 20;
+  box-shadow: 0 8px 16px rgba(8, 26, 51, 0.05);
+}
+
 .roadmap-phase {
   position: relative;
   border: 0;
@@ -377,6 +492,10 @@ body {
   height: 3px;
   background: var(--brand);
   content: "";
+  transform-origin: left;
+  animation: roadmap-rule-draw 700ms var(--ease-editorial) both;
+  animation-timeline: view();
+  animation-range: entry 10% cover 30%;
 }
 
 .roadmap-phase:nth-child(2)::before {
@@ -626,6 +745,35 @@ body {
   animation: landing-preview-enter 600ms var(--ease-editorial) 150ms both;
 }
 
+@keyframes expand-details {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes roadmap-rule-draw {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.editorial-reveal {
+  animation: editorial-reveal both var(--ease-editorial);
+  animation-timeline: view();
+  animation-range: entry 8% cover 28%;
+}
+
+@keyframes editorial-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(var(--reveal-distance)) scale(0.985);
+    clip-path: inset(0 0 12% 0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    clip-path: inset(0);
+  }
+}
+
 /* Responsive Polish */
 @media (max-width: 767px) {
   .product-page {
@@ -639,6 +787,32 @@ body {
   .roadmap-hero,
   .onboarding-panel {
     border-radius: 0.75rem;
+  }
+
+  .match-result-trigger {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .match-rank {
+    display: none;
+  }
+
+  .match-result-trigger > :nth-child(2) {
+    grid-column: 1 / -1;
+  }
+
+  .match-result-score {
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    justify-items: start;
+    white-space: normal;
+  }
+
+  .match-chevron {
+    justify-self: end;
   }
 }
 

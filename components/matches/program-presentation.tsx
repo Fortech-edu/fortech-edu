@@ -16,10 +16,10 @@ import {
 import type { ComparisonStatus } from "../../lib/admissions/presentation.ts";
 
 const statusStyles: Record<EligibilityStatus, string> = {
-  eligible_now: "bg-forest-100 text-forest-700",
-  with_actions: "bg-amber-100 text-amber-900",
-  requires_verification: "bg-slate-100 text-slate-700",
-  not_eligible: "bg-rose-100 text-rose-800",
+  eligible_now: "bg-[var(--status-match-bg)] text-[var(--status-match-text)]",
+  with_actions: "bg-[var(--status-action-bg)] text-[var(--status-action-text)]",
+  requires_verification: "bg-[var(--status-verify-bg)] text-[var(--status-verify-text)]",
+  not_eligible: "bg-[var(--status-blocked-bg)] text-[var(--status-blocked-text)]",
 };
 
 export function EligibilityBadge({ status }: { status: EligibilityStatus }) {
@@ -106,11 +106,11 @@ export function ReasonsAndGaps({ recommendation }: { recommendation: Recommendat
 }
 
 export const comparisonStatusStyles: Record<ComparisonStatus, string> = {
-  "Match": "bg-forest-100 text-forest-700",
-  "Action needed": "bg-amber-100 text-amber-900",
-  "Needs verification": "bg-slate-100 text-slate-700",
-  "Not required": "bg-forest-50 text-forest-700",
-  "Not comparable": "bg-slate-100 text-slate-700",
+  "Match": "bg-[var(--status-match-bg)] text-[var(--status-match-text)]",
+  "Action needed": "bg-[var(--status-action-bg)] text-[var(--status-action-text)]",
+  "Needs verification": "bg-[var(--status-verify-bg)] text-[var(--status-verify-text)]",
+  "Not required": "bg-[var(--status-verify-bg)] text-[var(--status-verify-text)]",
+  "Not comparable": "bg-[var(--status-verify-bg)] text-[var(--status-verify-text)]",
 };
 
 export function ProfileProgramComparison({
@@ -138,7 +138,7 @@ export function ProfileProgramComparison({
       </div>
       <div className="divide-y divide-forest-100 border-y border-forest-100 md:border-t-0">
         {criteria.map((criterion) => (
-          <article key={criterion.key} className="grid gap-3 py-6 md:grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] md:gap-5 md:px-4">
+          <article key={criterion.key} className="grid gap-3 py-4 md:min-h-14 md:grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] md:items-center md:gap-5 md:px-4">
             <h3 className="font-semibold text-forest-900">{criterion.label}</h3>
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted md:sr-only">Your profile</p>
