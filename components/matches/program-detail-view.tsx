@@ -13,6 +13,7 @@ import {
   saveSelectedProgram,
   toggleCompareSelection,
 } from "../../lib/storage/selection.ts";
+import { getCompareButtonPresentation } from "../../lib/admissions/presentation.ts";
 import {
   EligibilityBadge,
   ProfileProgramComparison,
@@ -56,6 +57,12 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
   const [selected, setSelected] = useState(() => loadCompareSelection(validIds));
   const [chosen, setChosen] = useState(() => loadSelectedProgram() === program.id);
   const isSelected = selected.includes(program.id);
+  const isFull = selected.length >= 2;
+  const compareButton = getCompareButtonPresentation({
+    isSelected,
+    isFull,
+    programName: program.programName,
+  });
 
   function toggle() {
     const next = toggleCompareSelection(selected, program.id);
@@ -71,22 +78,26 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
   }
 
   return (
-    <div className="program-detail space-y-5">
-      <Link href="/matches" className="inline-flex min-h-11 items-center rounded-full px-2 font-semibold text-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">← Back to matches</Link>
-      <article className="program-detail-surface overflow-hidden">
-        <header className="border-b border-forest-100 bg-[var(--surface)] p-6 sm:p-9 lg:p-12">
-          <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-forest-600">{program.universityName}</p>
-              <h1 className="mt-3 max-w-4xl text-4xl font-semibold leading-[0.92] text-forest-900 sm:text-6xl">{program.programName}</h1>
-              <p className="mt-3 text-muted">{program.country ?? "Unknown country"} · {program.degreeLevel ?? "Unknown degree"}</p>
-              <div className="mt-5 flex flex-wrap items-center gap-2"><EligibilityBadge status={recommendation.eligibility} /><SourceState recommendation={recommendation} /></div>
-            </div>
-            <div className="w-full lg:w-72"><ScoreSummary recommendation={recommendation} /></div>
-          </div>
-        </header>
+    <div className="matches-detail-view">
+      <nav aria-label="Breadcrumb" className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">
+        <Link href="/matches" className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Matches</Link> <span aria-hidden="true">→</span> <span className="text-forest-900">{program.programName}</span>
+      </nav>
 
-        <div className="p-6 sm:p-9">
+      <article className="mt-6 rounded-3xl border border-forest-100 bg-white p-6 sm:p-9" aria-labelledby="program-title">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0 max-w-3xl">
+            <div className="flex flex-wrap items-center gap-2">
+              <EligibilityBadge status={recommendation.eligibility} />
+              <SourceState recommendation={recommendation} />
+            </div>
+            <p className="mt-4 text-base font-semibold text-forest-600">{program.universityName}</p>
+            <h1 id="program-title" className="mt-1 break-words text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">{program.programName}</h1>
+            <p className="mt-2 text-sm text-muted">{program.country ?? "Unknown country"} · {program.degreeLevel ?? "Degree unknown"}</p>
+          </div>
+          <div className="w-full lg:w-auto"><ScoreSummary recommendation={recommendation} /></div>
+        </div>
+
+        <div className="mt-8 border-t border-forest-100 pt-8">
           <ProfileProgramComparison profile={profile} recommendation={recommendation} />
 
           <div className="mt-9 grid gap-8 border-t border-forest-100 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,.7fr)]">
@@ -105,11 +116,34 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Next step</p>
             <h2 id="next-step-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Turn this match into a plan</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Build a task roadmap from this program’s current requirements and your profile.</p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <button type="button" onClick={choose} className="min-h-12 rounded-full bg-forest-700 px-6 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">{chosen ? "Open roadmap for this program" : "Build my roadmap for this program"}</button>
-              <button type="button" onClick={toggle} disabled={selected.length === 2 && !isSelected} aria-pressed={isSelected} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">{isSelected ? "Remove from compare" : "Add to compare"}</button>
-              {selected.length === 2 && <Link href="/compare" className="inline-flex min-h-12 items-center justify-center rounded-full px-5 font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Compare selected programs</Link>}
+              <button
+                type="button"
+                onClick={toggle}
+                disabled={compareButton.disabled}
+                aria-pressed={isSelected}
+                title={compareButton.title}
+                aria-label={compareButton.ariaLabel}
+                className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                {isSelected ? "Remove from compare" : isFull ? "2 of 2 selected · Remove one to add this" : "Add to compare"}
+              </button>
+              {selected.length === 2 ? (
+                <Link href="/compare" className="inline-flex min-h-12 items-center justify-center rounded-full px-5 font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
+                  Compare selected programs (2 of 2) →
+                </Link>
+              ) : selected.length === 1 && isSelected ? (
+                <span className="self-center text-xs text-muted">
+                  1 of 2 selected · Choose 1 more in Matches
+                </span>
+              ) : null}
             </div>
+            {isFull && !isSelected && (
+              <p className="mt-2 text-xs text-muted">
+                You have 2 programs selected for side-by-side comparison. Remove one from your comparison list to add this program.
+              </p>
+            )}
           </section>
         </div>
       </article>
