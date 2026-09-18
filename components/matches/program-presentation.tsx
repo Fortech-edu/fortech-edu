@@ -151,39 +151,66 @@ export function ProgramSources({ recommendation }: { recommendation: Recommendat
   );
 }
 
-export function RecommendationCard({ recommendation, selected, disabled, onCompare }: { recommendation: Recommendation; selected: boolean; disabled: boolean; onCompare: () => void }) {
+export function RecommendationCard({ recommendation, rank, recentChange, selected, disabled, compareReady, onCompare }: { recommendation: Recommendation; rank: number; recentChange?: string | null; selected: boolean; disabled: boolean; compareReady: boolean; onCompare: () => void }) {
   const { program } = recommendation;
+  const reasons = recommendation.reasons.slice(0, 2);
+  const watchOut = recommendation.gaps[0];
   return (
-    <article className="rounded-3xl border border-forest-100 bg-white p-5 shadow-[0_16px_50px_rgba(23,52,41,.06)] sm:p-7">
-      <div className="flex flex-col gap-5 lg:flex-row lg:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2"><EligibilityBadge status={recommendation.eligibility} /><SourceState recommendation={recommendation} /></div>
+    <article className="rounded-[1.75rem] border border-forest-100 bg-white p-5 shadow-[0_16px_50px_rgba(23,52,41,.06)] sm:p-7">
+      <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
+        <p className="text-2xl font-semibold tracking-tight text-forest-600" aria-label={`Rank ${rank}`}>#{rank}</p>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <EligibilityBadge status={recommendation.eligibility} />
+            {recentChange ? <span className="inline-flex rounded-full border border-sand-300 bg-sand-100 px-3 py-1 text-xs font-bold text-forest-900">{recentChange}</span> : null}
+          </div>
           <p className="mt-4 text-sm font-semibold text-forest-600">{program.universityName}</p>
-          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-forest-900">{program.programName}</h2>
-          <p className="mt-1 text-sm text-muted">{program.country ?? "Unknown country"} · {program.field}</p>
+          <h2 className="mt-1 break-words text-2xl font-semibold tracking-tight text-forest-900 sm:text-[1.7rem]">{program.programName}</h2>
+          <p className="mt-2 text-sm text-muted">{program.country ?? "Unknown country"} · {program.degreeLevel ?? "Degree unknown"}</p>
+          <div className="mt-3"><SourceState recommendation={recommendation} /></div>
         </div>
-        <div className="w-full lg:w-72"><ScoreSummary recommendation={recommendation} /></div>
+        <div className="rounded-2xl bg-forest-900 px-5 py-4 text-white sm:min-w-36 sm:text-right">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-forest-100">Profile match</p>
+          <p className="mt-1 text-3xl font-semibold">Fit {recommendation.fitScore}</p>
+          <p className="mt-1 max-w-48 text-xs leading-5 text-forest-100">Based on {recommendation.dataCoverage}% comparable known inputs</p>
+        </div>
       </div>
 
-      <p className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
-        Fit Score measures how well this program matches your profile. It is not your probability of admission.
-      </p>
-
-      <div className="mt-5 grid gap-5 lg:grid-cols-[.8fr_1.2fr]">
-        <ProgramFacts recommendation={recommendation} />
-        <ReasonsAndGaps recommendation={recommendation} />
+      <div className="mt-6 grid gap-5 border-t border-forest-100 pt-5 md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,.75fr)]">
+        <section aria-labelledby={`why-${program.id}`}>
+          <h3 id={`why-${program.id}`} className="text-sm font-semibold text-forest-900">Why it matches you</h3>
+          <ul className="mt-3 space-y-2">
+            {reasons.map((reason) => (
+              <li key={reason} className="flex gap-2.5 text-sm leading-5 text-ink">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-forest-100 text-[11px] font-bold text-forest-700" aria-hidden="true">✓</span>
+                <span>{reason}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+        <div>
+          {watchOut ? (
+            <section aria-labelledby={`watch-${program.id}`}>
+              <h3 id={`watch-${program.id}`} className="text-sm font-semibold text-forest-900">Watch first</h3>
+              <p className="mt-3 flex gap-2.5 text-sm leading-5 text-ink">
+                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sand-100 text-[11px] font-bold text-amber-900" aria-hidden="true">!</span>
+                <span>{watchOut}</span>
+              </p>
+            </section>
+          ) : null}
+          <div className={watchOut ? "mt-5" : ""}>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Tuition</p>
+            <p className="mt-1 font-semibold text-forest-900">{formatTuition(program)}</p>
+          </div>
+        </div>
       </div>
 
-      <details className="mt-5 rounded-2xl border border-forest-100 p-4">
-        <summary className="cursor-pointer font-semibold text-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">See score breakdown</summary>
-        <div className="mt-4"><ScoreBreakdown recommendation={recommendation} /></div>
-      </details>
-
-      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-        <Link href={`/matches/${program.id}`} className="inline-flex min-h-11 items-center justify-center rounded-full bg-forest-700 px-5 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">View details</Link>
-        <button type="button" aria-pressed={selected} disabled={disabled} onClick={onCompare} className="min-h-11 rounded-full border border-forest-200 px-5 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">
-          {selected ? "Remove from compare" : "Compare"}
+      <div className="mt-6 flex flex-col gap-2 border-t border-forest-100 pt-5 sm:flex-row sm:justify-end">
+        <Link href={`/matches/${program.id}`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest-700 px-6 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">View program</Link>
+        <button type="button" aria-pressed={selected} disabled={disabled} onClick={onCompare} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">
+          {selected ? "Selected · Remove" : disabled ? "Compare limit reached" : "Compare"}
         </button>
+        {compareReady ? <Link href="/compare" className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest-900 px-6 font-semibold text-white hover:bg-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Compare 2 programs</Link> : null}
       </div>
     </article>
   );

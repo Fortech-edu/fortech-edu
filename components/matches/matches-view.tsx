@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { ChangeImpact } from "../../lib/admissions/change-impact.ts";
+import {
+  impactCounts,
+  presentChangedInput,
+  programChangeDescription,
+  recentChangeLabel,
+} from "../../lib/admissions/change-impact-presentation.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
+import { loadRecentChangeImpact } from "../../lib/storage/change-impact.ts";
 import { loadStoredProfile } from "../../lib/storage/profile.ts";
 import {
   loadCompareSelection,
@@ -30,12 +38,13 @@ function MatchesContent() {
     return <EmptyState title="No suitable matches yet" copy="No verified programs match your selected degree, field, and current eligibility. Edit your profile to review the available options." href="/onboarding" action="Edit profile" />;
   }
 
-  return <RecommendationList key={loadJourneyUpdatedAt()} recommendations={recommendations} />;
+  return <RecommendationList key={loadJourneyUpdatedAt()} profile={stored.profile} recommendations={recommendations} impact={loadRecentChangeImpact()} />;
 }
 
-function RecommendationList({ recommendations }: { recommendations: ReturnType<typeof getPrimaryMatches> }) {
+function RecommendationList({ profile, recommendations, impact }: { profile: NonNullable<ReturnType<typeof loadStoredProfile>>["profile"]; recommendations: ReturnType<typeof getPrimaryMatches>; impact: ChangeImpact | null }) {
   const validIds = recommendations.map(({ program }) => program.id);
   const [selected, setSelected] = useState(() => loadCompareSelection(validIds));
+  const recentChanges = new Map(impact?.programChanges.map((change) => [change.programId, change]));
 
   function toggle(id: string) {
     const next = toggleCompareSelection(selected, id);
@@ -45,31 +54,40 @@ function RecommendationList({ recommendations }: { recommendations: ReturnType<t
 
   return (
     <div className="space-y-5">
-      <section className="rounded-3xl bg-forest-900 p-6 text-white sm:p-8">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-forest-100">Your recommendations</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Relevant programs, clearly explained.</h1>
-            <p className="mt-3 max-w-2xl leading-7 text-forest-100">Ranked within your field by eligibility first, then profile match. Scores are recalculated from your latest saved profile.</p>
+      <section className="overflow-hidden rounded-[2rem] bg-forest-900 text-white shadow-[0_20px_65px_rgba(23,52,41,.14)]" aria-labelledby="matches-title">
+        <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(18rem,.75fr)]">
+          <div className="p-6 sm:p-9">
+            <nav aria-label="Profile journey" className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-100">Profile <span aria-hidden="true">→</span> Diagnosis <span aria-hidden="true">→</span> <span className="text-white">Matches</span></nav>
+            <h1 id="matches-title" className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">Programs for your profile</h1>
+            <p className="mt-4 max-w-2xl leading-7 text-forest-100">Ranked by the existing deterministic matching system: eligibility, then Fit Score, then data coverage.</p>
+            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white">Fit Score measures profile alignment — not admission probability.</p>
+            <Link href="/onboarding" className="mt-6 inline-flex min-h-11 items-center rounded-full border border-white/35 px-5 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Edit profile</Link>
           </div>
-          <Link href="/onboarding" className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-white/35 px-5 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Edit profile</Link>
+          <div className="border-t border-white/15 bg-white/7 p-6 sm:p-8 lg:border-l lg:border-t-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-100">Profile in use</p>
+            <dl className="mt-5 space-y-5">
+              <ProfileContext label="Field" value={profile.intendedField ?? "Not provided"} />
+              <ProfileContext label="Countries" value={profile.preferredCountries.join(" + ") || "Not provided"} />
+              <ProfileContext label="Intake" value={profile.targetIntake ?? "Not provided"} />
+            </dl>
+          </div>
         </div>
       </section>
 
-      {recommendations.map((recommendation) => (
-        <RecommendationCard
-          key={recommendation.program.id}
-          recommendation={recommendation}
-          selected={selected.includes(recommendation.program.id)}
-          disabled={selected.length === 2 && !selected.includes(recommendation.program.id)}
-          onCompare={() => toggle(recommendation.program.id)}
-        />
-      ))}
+      {impact && impact.programChanges.length > 0 ? <ImpactPanel impact={impact} /> : null}
 
-      <aside className="sticky bottom-3 z-10 rounded-2xl border border-forest-200 bg-white/95 p-4 shadow-[0_16px_45px_rgba(23,52,41,.16)] backdrop-blur sm:flex sm:items-center sm:justify-between" aria-label="Comparison selection">
+      <div className="flex items-end justify-between gap-4 px-1 pt-2">
         <div>
-          <p className="font-semibold text-forest-900">{selected.length} of 2 selected</p>
-          <p className="mt-0.5 text-sm text-muted">Choose exactly two programs to compare.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Ranked shortlist</p>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-forest-900">{recommendations.length} programs to review</h2>
+        </div>
+        <p className="hidden text-sm text-muted sm:block">Highest-ranked first</p>
+      </div>
+
+      <aside id="comparison-selection" className="rounded-2xl border border-forest-200 bg-white p-4 shadow-[0_12px_35px_rgba(23,52,41,.06)] sm:flex sm:items-center sm:justify-between" aria-label="Comparison selection">
+        <div>
+          <p className="font-semibold text-forest-900">{selected.length} selected</p>
+          <p className="mt-0.5 text-sm text-muted">{selected.length === 2 ? "Your comparison is ready." : `Select ${2 - selected.length} more to compare.`}</p>
         </div>
         {selected.length === 2 ? (
           <Link href="/compare" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-forest-700 px-5 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 sm:mt-0 sm:w-auto">Compare programs</Link>
@@ -77,7 +95,78 @@ function RecommendationList({ recommendations }: { recommendations: ReturnType<t
           <button type="button" disabled className="mt-3 min-h-11 w-full rounded-full bg-slate-200 px-5 font-semibold text-slate-500 sm:mt-0 sm:w-auto">Compare programs</button>
         )}
       </aside>
+
+      {recommendations.map((recommendation, index) => (
+        <RecommendationCard
+          key={recommendation.program.id}
+          recommendation={recommendation}
+          rank={index + 1}
+          recentChange={recentChangeLabel(recentChanges.get(recommendation.program.id))}
+          selected={selected.includes(recommendation.program.id)}
+          disabled={selected.length === 2 && !selected.includes(recommendation.program.id)}
+          compareReady={selected.length === 2}
+          onCompare={() => toggle(recommendation.program.id)}
+        />
+      ))}
     </div>
+  );
+}
+
+function ProfileContext({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold uppercase tracking-[0.12em] text-forest-100">{label}</dt>
+      <dd className="mt-1 break-words font-semibold text-white">{value}</dd>
+    </div>
+  );
+}
+
+function ImpactPanel({ impact }: { impact: ChangeImpact }) {
+  const counts = impactCounts(impact);
+  const inputs = impact.changedInputs.slice(0, 3).map(presentChangedInput);
+  const programs = impact.programChanges.slice(0, 3);
+
+  return (
+    <section className="rounded-[1.75rem] border border-sand-300 bg-sand-100 p-5 shadow-[0_14px_40px_rgba(23,52,41,.05)] sm:p-7" aria-labelledby="impact-title">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,.9fr)]">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Recent change impact</p>
+          <h2 id="impact-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Your profile changed</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/80">This updated how your profile compares with verified program requirements.</p>
+
+          {inputs.length > 0 ? (
+            <dl className="mt-5 grid gap-3 sm:grid-cols-2">
+              {inputs.map(({ label, previous, next }) => (
+                <div key={label} className="border-l-2 border-forest-600 pl-3">
+                  <dt className="text-xs font-semibold uppercase tracking-[0.1em] text-forest-600">{label}</dt>
+                  <dd className="mt-1 text-sm font-semibold leading-6 text-forest-900">
+                    {previous && next ? <>{previous} <span aria-hidden="true">→</span> {next}</> : previous ?? next}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          ) : null}
+          {impact.changedInputs.length > 3 ? <p className="mt-3 text-xs text-muted">+{impact.changedInputs.length - 3} more profile changes</p> : null}
+
+          {counts.length > 0 ? (
+            <p className="mt-5 text-sm font-semibold leading-6 text-forest-900" aria-live="polite">{counts.join(" · ")}</p>
+          ) : null}
+        </div>
+
+        <div className="border-t border-sand-300 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+          <h3 className="text-sm font-semibold text-forest-900">Important program changes</h3>
+          <ul className="mt-3 space-y-3">
+            {programs.map((change) => (
+              <li key={change.programId} className="text-sm leading-5">
+                <p className="font-semibold text-ink">{change.universityName}</p>
+                <p className="text-muted">{change.programName} · {programChangeDescription(change)}</p>
+              </li>
+            ))}
+          </ul>
+          {impact.programChanges.length > 3 ? <p className="mt-3 text-xs text-muted">Showing 3 of {impact.programChanges.length} program changes.</p> : null}
+        </div>
+      </div>
+    </section>
   );
 }
 
