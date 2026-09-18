@@ -12,6 +12,7 @@ import {
 import { JOURNEY_UPDATED_AT_KEY } from "../storage/sync-events.ts";
 import { getSupabaseClient } from "./client.ts";
 import {
+  parseRemoteProfile,
   parseRemoteJourney,
   serializeJourney,
   serializeProfile,
@@ -38,6 +39,7 @@ const profile: StudentProfile = {
   intendedField: "Computer Science",
   preferredCountries: ["Canada"],
   preferredLanguage: null,
+  activitiesAndAchievements: "Robotics project and volunteering",
   targetIntake: "2027",
   gpa: 3.5,
   ieltsScore: 6.5,
@@ -218,6 +220,16 @@ test("profile payload excludes unused identifying fields", () => {
 test("profile payload preserves an optional language preference", () => {
   const payload = serializeProfile({ version: 1, profile: { ...profile, preferredLanguage: "English" }, step: 4, completed: true, updatedAt: "2026-02-02T00:00:00.000Z" });
   assert.equal(payload.preferredLanguage, "English");
+});
+
+test("profile persistence preserves activities and accepts legacy remote profiles", () => {
+  const payload = serializeProfile({ version: 1, profile, step: 4, completed: true, updatedAt: "2026-02-02T00:00:00.000Z" });
+  assert.equal(payload.activitiesAndAchievements, "Robotics project and volunteering");
+  assert.equal(parseRemoteProfile(remoteProfile("2026-02-02T00:00:00.000Z"))?.profile.activitiesAndAchievements, "Robotics project and volunteering");
+
+  const legacy = remoteProfile("2026-02-02T00:00:00.000Z");
+  delete legacy.profile.activitiesAndAchievements;
+  assert.equal(parseRemoteProfile(legacy)?.profile.activitiesAndAchievements, null);
 });
 
 test("client-side Supabase code never references privileged keys", () => {

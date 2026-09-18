@@ -385,6 +385,11 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
                   <input id="sat" className={inputClass} type="number" min="400" max="1600" step="10" inputMode="numeric" placeholder="1200" value={profile.satScore ?? ""} onChange={(event) => update("satScore", numberOrNull(event.target.value))} aria-describedby={`sat-help${errors.satScore ? " sat-error" : ""}`} aria-invalid={Boolean(errors.satScore)} />
                   <ErrorText id="sat-error">{errors.satScore}</ErrorText>
                 </FieldCard>
+                <FieldCard>
+                  <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
+                  <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
+                  <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
+                </FieldCard>
               </>
             ) : null}
 
@@ -474,6 +479,8 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
                     <div><dt className="text-muted">IELTS</dt><dd className="mt-1 font-semibold text-ink">{display(profile.ieltsScore)}</dd></div>
                     <div><dt className="text-muted">SAT</dt><dd className="mt-1 font-semibold text-ink">{display(profile.satScore)}</dd></div>
                   </dl>
+                  <p className="mt-4 border-t border-forest-100 pt-4 text-sm text-muted">Activities and achievements</p>
+                  <p className="mt-1 text-sm text-ink">{profile.activitiesAndAchievements?.trim() || "Not provided"}</p>
                 </ReviewSection>
 
                 <ReviewSection title="Preferences" step={3} onEdit={edit}>

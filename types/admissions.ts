@@ -13,6 +13,7 @@ export type StudentProfile = {
   intendedField: string | null;
   preferredCountries: string[];
   preferredLanguage: string | null;
+  activitiesAndAchievements?: string | null;
   targetIntake: string | null;
   gpa: number | null;
   ieltsScore: number | null;
