@@ -81,6 +81,25 @@ test("provider HTTP failure returns fallback with safe diagnostics", async () =>
   assert.deepEqual(messages, ["AI diagnosis: provider_request_started", "AI diagnosis: provider_http_error status=401"]);
 });
 
+test("provider HTTP failure detail is included in the log without changing fallback behavior", async () => {
+  const messages: string[] = [];
+  const provider: AIProvider = {
+    generateJson: async () => {
+      throw new AIProviderError(
+        "provider_http_error",
+        401,
+        'model=gemini-2.5-flash-lite google_status=UNAUTHENTICATED message="Invalid credentials"',
+      );
+    },
+  };
+  const result = await createAIService(provider, { log: (message) => messages.push(message) }).generateDiagnosis(diagnosisInput);
+  assert.equal(result.source, "fallback");
+  assert.equal(
+    messages.at(-1),
+    "AI diagnosis: provider_http_error status=401 model=gemini-2.5-flash-lite google_status=UNAUTHENTICATED message=\"Invalid credentials\"",
+  );
+});
+
 test("provider timeout returns fallback", async () => {
   const messages: string[] = [];
   const provider: AIProvider = { generateJson: () => new Promise(() => undefined) };
