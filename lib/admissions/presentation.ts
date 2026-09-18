@@ -162,7 +162,7 @@ const formatBudget = (profile: StudentProfile) => {
   return `${profile.budgetCurrency.toUpperCase()} ${formatNumber(profile.annualBudget)} / year`;
 };
 
-function requirementCriterion(
+export function requirementCriterion(
   key: "academic" | "ielts" | "sat",
   label: string,
   value: number | null,
