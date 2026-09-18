@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { EligibilityStatus, Recommendation, StudentProfile } from "../../types/admissions.ts";
+import { emptyProfile } from "../../lib/onboarding.ts";
 import {
+  buildCardEvidence,
   buildProfileProgramCriteria,
   eligibilityLabels,
   formatLanguageOfInstruction,
@@ -102,7 +104,7 @@ export function ReasonsAndGaps({ recommendation }: { recommendation: Recommendat
   );
 }
 
-const comparisonStatusStyles: Record<ComparisonStatus, string> = {
+export const comparisonStatusStyles: Record<ComparisonStatus, string> = {
   "Match": "bg-forest-100 text-forest-700",
   "Action needed": "bg-amber-100 text-amber-900",
   "Needs verification": "bg-slate-100 text-slate-700",
@@ -226,10 +228,29 @@ export function ProgramSources({ recommendation }: { recommendation: Recommendat
   );
 }
 
-export function RecommendationCard({ recommendation, rank, recentChange, selected, disabled, compareReady, onCompare }: { recommendation: Recommendation; rank: number; recentChange?: string | null; selected: boolean; disabled: boolean; compareReady: boolean; onCompare: () => void }) {
+export function RecommendationCard({
+  recommendation,
+  profile,
+  rank,
+  recentChange,
+  selected,
+  disabled,
+  compareReady,
+  onCompare,
+}: {
+  recommendation: Recommendation;
+  profile?: StudentProfile;
+  rank: number;
+  recentChange?: string | null;
+  selected: boolean;
+  disabled: boolean;
+  compareReady: boolean;
+  onCompare: () => void;
+}) {
   const { program } = recommendation;
-  const reasons = recommendation.reasons.slice(0, 2);
-  const watchOut = recommendation.gaps[0];
+  const cardProfile = profile ?? emptyProfile;
+  const evidence = buildCardEvidence(cardProfile, recommendation);
+
   return (
     <article className="recommendation-row py-7 sm:py-10">
       <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
@@ -253,29 +274,43 @@ export function RecommendationCard({ recommendation, rank, recentChange, selecte
 
       <div className="mt-6 grid gap-5 border-t border-forest-100 pt-5 md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,.75fr)]">
         <section aria-labelledby={`why-${program.id}`}>
-          <h3 id={`why-${program.id}`} className="text-sm font-semibold text-forest-900">Why it matches you</h3>
-          <ul className="mt-3 space-y-2">
-            {reasons.map((reason) => (
-              <li key={reason} className="flex gap-2.5 text-sm leading-5 text-ink">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-forest-100 text-[11px] font-bold text-forest-700" aria-hidden="true">✓</span>
-                <span>{reason}</span>
-              </li>
+          <h3 id={`why-${program.id}`} className="text-sm font-semibold text-forest-900">Why this program appears</h3>
+          <div className="mt-3 space-y-2">
+            {evidence.map((criterion) => (
+              <div
+                key={criterion.key}
+                className="flex flex-col gap-1 rounded-xl bg-forest-50/60 p-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-1.5 text-xs">
+                    <span className="font-semibold text-forest-900">{criterion.label}</span>
+                    <span className="text-muted">· {criterion.programValue}</span>
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted leading-relaxed">{criterion.detail}</p>
+                </div>
+                <span
+                  className={`inline-flex shrink-0 self-start rounded-full px-2.5 py-0.5 text-[11px] font-bold sm:self-center ${comparisonStatusStyles[criterion.status]}`}
+                >
+                  {criterion.status}
+                </span>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
         <div>
-          {watchOut ? (
-            <section aria-labelledby={`watch-${program.id}`}>
-              <h3 id={`watch-${program.id}`} className="text-sm font-semibold text-forest-900">Watch first</h3>
-              <p className="mt-3 flex gap-2.5 text-sm leading-5 text-ink">
-                <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-sand-100 text-[11px] font-bold text-amber-900" aria-hidden="true">!</span>
-                <span>{watchOut}</span>
-              </p>
-            </section>
-          ) : null}
-          <div className={watchOut ? "mt-5" : ""}>
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Tuition</p>
-            <p className="mt-1 font-semibold text-forest-900">{formatTuition(program)}</p>
+          <div className="rounded-2xl border border-forest-100 bg-forest-50/40 p-4 space-y-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Published tuition</p>
+              <p className="mt-1 font-semibold text-forest-900">{formatTuition(program)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Application deadline</p>
+              <p className="mt-1 font-semibold text-forest-900">{program.deadline ?? "Unknown"}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Teaching language</p>
+              <p className="mt-1 font-semibold text-forest-900">{formatLanguageOfInstruction(program)}</p>
+            </div>
           </div>
         </div>
       </div>

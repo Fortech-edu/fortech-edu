@@ -4,14 +4,20 @@ import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
 import { getProgramById, programs } from "../../data/programs.ts";
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 import { assessProgram } from "./recommend.ts";
+import { calculateFit } from "./scoring.ts";
+import { evaluateEligibility } from "./eligibility.ts";
 import {
+  buildCardEvidence,
   buildProfileProgramCriteria,
   buildProgramComparisonCriteria,
   buildTargetRequirementFacts,
+  canonicalEvidenceOrder,
+  criterionRelevance,
   formatRequirement,
   formatScoreComponent,
   getProgramSource,
   resolveComparison,
+  selectCardEvidence,
 } from "./presentation.ts";
 
 const profile: StudentProfile = {
@@ -221,4 +227,351 @@ test("compare resolution rejects zero, one, invalid, duplicate, and profile-inva
   assert.equal(resolveComparison([first.program.id, first.program.id], current), null);
   assert.equal(resolveComparison([first.program.id, second.program.id], [first]), null);
   assert.deepEqual(resolveComparison([first.program.id, second.program.id], current), [first, second]);
+});
+
+test("criterionRelevance scores actionable gaps and non-comparables above matches and unknowns", () => {
+  const gap = criterion({ ...profile, gpa: 2.5 }, byId("northbridge-cs"), "academic");
+  const nonComparable = criterion(
+    { ...profile, gpa: 3.5 },
+    { ...byId("northbridge-cs"), academicRequirement: { label: "UNT", minimumScore: 100, isRequired: true, notes: null } },
+    "academic",
+  );
+  const match = criterion({ ...profile, gpa: 3.8 }, byId("northbridge-cs"), "academic");
+  const informativeUnknown = criterion(
+    { ...profile, gpa: null },
+    byId("northbridge-cs"),
+    "academic",
+  );
+  const unprovidedUnknown = criterion(
+    { ...profile, annualBudget: null },
+    { ...byId("northbridge-cs"), tuition: null },
+    "tuition",
+  );
+  const notRequiredSat = criterion(profile, byId("northbridge-cs"), "sat");
+  const notRequiredLang = criterion(profile, byId("northbridge-cs"), "languageOfInstruction");
+
+  assert.equal(gap.status, "Action needed");
+  assert.equal(nonComparable.status, "Not comparable");
+  assert.equal(match.status, "Match");
+  assert.equal(informativeUnknown.status, "Needs verification");
+  assert.equal(unprovidedUnknown.status, "Needs verification");
+  assert.equal(notRequiredSat.status, "Not required");
+  assert.equal(notRequiredLang.status, "Not required");
+
+  assert.ok(criterionRelevance(gap) > criterionRelevance(nonComparable));
+  assert.ok(criterionRelevance(nonComparable) > criterionRelevance(match));
+  assert.ok(criterionRelevance(match) > criterionRelevance(informativeUnknown));
+  assert.ok(criterionRelevance(informativeUnknown) > criterionRelevance(notRequiredSat));
+  assert.ok(criterionRelevance(notRequiredSat) > criterionRelevance(unprovidedUnknown));
+  assert.ok(criterionRelevance(unprovidedUnknown) > criterionRelevance(notRequiredLang));
+});
+
+test("real production programs produce 3 to 5 compact evidence rows with valid statuses", () => {
+  const lut = productionById("lut-software-systems-engineering");
+  const asu = productionById("asu-data-science");
+
+  const lutEvidence = buildCardEvidence(profile, assessProgram(profile, lut));
+  assert.ok(lutEvidence.length >= 3 && lutEvidence.length <= 5);
+  for (const item of lutEvidence) {
+    assert.ok(["Match", "Action needed", "Needs verification", "Not required", "Not comparable"].includes(item.status));
+    assert.ok(item.label.length > 0);
+    assert.ok(item.programValue.length > 0);
+    assert.ok(item.detail.length > 0);
+  }
+
+  const asuEvidence = buildCardEvidence(profile, assessProgram(profile, asu));
+  assert.ok(asuEvidence.length >= 3 && asuEvidence.length <= 5);
+  for (const item of asuEvidence) {
+    assert.ok(["Match", "Action needed", "Needs verification", "Not required", "Not comparable"].includes(item.status));
+    assert.ok(item.label.length > 0);
+    assert.ok(item.programValue.length > 0);
+    assert.ok(item.detail.length > 0);
+  }
+});
+
+test("known academic match appears as Match in card evidence", () => {
+  const program = byId("northbridge-cs");
+  const evidence = buildCardEvidence({ ...profile, gpa: 3.8 }, assessProgram({ ...profile, gpa: 3.8 }, program));
+  const academicItem = evidence.find((item) => item.key === "academic");
+  assert.ok(academicItem);
+  assert.equal(academicItem.status, "Match");
+  assert.equal(academicItem.detail, "Your provided score meets this published minimum.");
+});
+
+test("known academic gap appears as Action needed and is prioritized in card evidence", () => {
+  const program = byId("northbridge-cs");
+  const candidate = { ...profile, gpa: 2.8 };
+  const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+  const academicItem = evidence.find((item) => item.key === "academic");
+  assert.ok(academicItem);
+  assert.equal(academicItem.status, "Action needed");
+  assert.match(academicItem.detail, /below the published minimum/);
+});
+
+test("missing student value is Needs verification, not a failure or gap", () => {
+  const program = byId("northbridge-cs");
+  const candidate = { ...profile, gpa: null, ieltsScore: null };
+  const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+  const academicItem = evidence.find((item) => item.key === "academic");
+  const ieltsItem = evidence.find((item) => item.key === "ielts");
+
+  assert.ok(academicItem);
+  assert.equal(academicItem.status, "Needs verification");
+  assert.match(academicItem.detail, /not treated as a confirmed gap/);
+
+  assert.ok(ieltsItem);
+  assert.equal(ieltsItem.status, "Needs verification");
+  assert.match(ieltsItem.detail, /not treated as a confirmed gap/);
+});
+
+test("unknown program requirement is Needs verification without fabricated thresholds", () => {
+  const program = { ...byId("northbridge-cs"), academicRequirement: null, ieltsRequirement: null };
+  const evidence = buildCardEvidence(profile, assessProgram(profile, program));
+  const academicItem = evidence.find((item) => item.key === "academic");
+  const ieltsItem = evidence.find((item) => item.key === "ielts");
+
+  assert.ok(academicItem);
+  assert.equal(academicItem.status, "Needs verification");
+  assert.equal(academicItem.programValue, "Unknown");
+  assert.match(academicItem.detail, /current verified data does not state/);
+
+  assert.ok(ieltsItem);
+  assert.equal(ieltsItem.status, "Needs verification");
+  assert.equal(ieltsItem.programValue, "Unknown");
+});
+
+test("SAT not required remains Not required and provides positive clarity", () => {
+  const program = byId("northbridge-cs");
+  const allCriteria = buildProfileProgramCriteria(profile, assessProgram(profile, program));
+  const satCriterion = allCriteria.find((item) => item.key === "sat");
+  assert.ok(satCriterion);
+  assert.equal(satCriterion.status, "Not required");
+  assert.equal(satCriterion.programValue, "Not required");
+  assert.equal(satCriterion.detail, "A missing score is not treated as a problem for this program.");
+
+  // When budget and timeline are not provided, SAT not-required is selected into card evidence
+  const candidate = { ...profile, annualBudget: null, targetIntake: null };
+  const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+  const satItem = evidence.find((item) => item.key === "sat");
+  assert.ok(satItem);
+  assert.equal(satItem.status, "Not required");
+});
+
+test("non-GPA academic scale remains Not comparable and is surfaced in evidence", () => {
+  const program: UniversityProgram = {
+    ...byId("northbridge-cs"),
+    academicRequirement: { label: "UNT", minimumScore: 100, isRequired: true, notes: null },
+  };
+  const candidate = { ...profile, gpa: 3.5 };
+  const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+  const academicItem = evidence.find((item) => item.key === "academic");
+
+  assert.ok(academicItem);
+  assert.equal(academicItem.status, "Not comparable");
+  assert.match(academicItem.detail, /different scales, so no numeric gap is calculated/);
+});
+
+test("verified language match appears as Match in card evidence", () => {
+  const program = { ...byId("northbridge-cs"), languageOfInstruction: "English" };
+  const candidate = { ...profile, preferredLanguage: "English" };
+  const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+  const langItem = evidence.find((item) => item.key === "languageOfInstruction");
+
+  assert.ok(langItem);
+  assert.equal(langItem.status, "Match");
+  assert.equal(langItem.detail, "This program is taught in your preferred language.");
+});
+
+test("unknown program language with student preference appears as Needs verification", () => {
+  const program = { ...byId("northbridge-cs"), languageOfInstruction: null };
+  const candidate = { ...profile, preferredLanguage: "English" };
+  const allCriteria = buildProfileProgramCriteria(candidate, assessProgram(candidate, program));
+  const langCriterion = allCriteria.find((item) => item.key === "languageOfInstruction");
+
+  assert.ok(langCriterion);
+  assert.equal(langCriterion.status, "Needs verification");
+  assert.equal(langCriterion.programValue, "Unknown");
+  assert.match(langCriterion.detail, /current verified program data does not state the teaching language/);
+
+  // When budget and intake are not set, language verification is selected into card evidence
+  const evidence = buildCardEvidence({ ...candidate, annualBudget: null, targetIntake: null }, assessProgram(candidate, program));
+  const langItem = evidence.find((item) => item.key === "languageOfInstruction");
+  assert.ok(langItem);
+  assert.equal(langItem.status, "Needs verification");
+});
+
+test("no language preference creates no negative signal and stays Not required", () => {
+  const program = { ...byId("northbridge-cs"), languageOfInstruction: "English" };
+  const candidate = { ...profile, preferredLanguage: null };
+  const allCriteria = buildProfileProgramCriteria(candidate, assessProgram(candidate, program));
+  const langCriterion = allCriteria.find((item) => item.key === "languageOfInstruction");
+
+  assert.ok(langCriterion);
+  assert.equal(langCriterion.status, "Not required");
+  assert.equal(langCriterion.profileValue, "No preference");
+  assert.match(langCriterion.detail, /No language preference is set, so this does not affect your profile alignment/);
+});
+
+test("comparable tuition distinguishes within budget match and over budget action", () => {
+  const program = { ...byId("northbridge-cs"), tuition: 15000, tuitionCurrency: "USD", tuitionPeriod: "year" as const };
+
+  const within = buildCardEvidence({ ...profile, annualBudget: 20000, budgetCurrency: "USD" }, assessProgram(profile, program));
+  const withinTuition = within.find((item) => item.key === "tuition");
+  assert.ok(withinTuition);
+  assert.equal(withinTuition.status, "Match");
+  assert.match(withinTuition.detail, /within your annual budget/);
+
+  const over = buildCardEvidence({ ...profile, annualBudget: 12000, budgetCurrency: "USD" }, assessProgram({ ...profile, annualBudget: 12000 }, program));
+  const overTuition = over.find((item) => item.key === "tuition");
+  assert.ok(overTuition);
+  assert.equal(overTuition.status, "Action needed");
+  assert.match(overTuition.detail, /above your annual budget/);
+});
+
+test("incompatible currency or period stays Not comparable and explains exchange rates are not guessed", () => {
+  const program = { ...byId("northbridge-cs"), tuition: 15000, tuitionCurrency: "EUR", tuitionPeriod: "year" as const };
+  const candidate = { ...profile, annualBudget: 20000, budgetCurrency: "USD" };
+  const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+  const tuitionItem = evidence.find((item) => item.key === "tuition");
+
+  assert.ok(tuitionItem);
+  assert.equal(tuitionItem.status, "Not comparable");
+  assert.match(tuitionItem.detail, /Currencies or billing periods differ\. We don't guess exchange rates\./);
+});
+
+test("unknown deadline or intake stays Needs verification", () => {
+  const noDeadline = { ...byId("northbridge-cs"), deadline: null };
+  const allNoDeadline = buildProfileProgramCriteria(profile, assessProgram(profile, noDeadline));
+  const timelineCriterion = allNoDeadline.find((item) => item.key === "timeline");
+  assert.ok(timelineCriterion);
+  assert.equal(timelineCriterion.status, "Needs verification");
+  assert.match(timelineCriterion.detail, /No verified deadline is available in the current data\./);
+
+  const noIntake = { ...profile, targetIntake: null };
+  const allNoIntake = buildProfileProgramCriteria(noIntake, assessProgram(noIntake, byId("northbridge-cs")));
+  const timelineCriterion2 = allNoIntake.find((item) => item.key === "timeline");
+  assert.ok(timelineCriterion2);
+  assert.equal(timelineCriterion2.status, "Needs verification");
+  assert.match(timelineCriterion2.detail, /Add a target intake to compare timing\./);
+
+  // When selected into card evidence (e.g. limit 7 or minimal profile)
+  const fullEvidence = buildCardEvidence(profile, assessProgram(profile, noDeadline), 7);
+  assert.equal(fullEvidence.find((item) => item.key === "timeline")?.status, "Needs verification");
+});
+
+test("card evidence evaluation leaves calculateFit Fit Score completely unchanged", () => {
+  const program = byId("northbridge-cs");
+  const baselineFit = calculateFit(profile, program);
+
+  const rec = assessProgram(profile, program);
+  const evidence = buildCardEvidence(profile, rec);
+  assert.ok(evidence.length >= 3);
+
+  const afterFit = calculateFit(profile, program);
+  assert.deepEqual(baselineFit, afterFit);
+  assert.equal(rec.fitScore, baselineFit.fitScore);
+});
+
+test("card evidence evaluation leaves evaluateEligibility completely unchanged", () => {
+  const program = byId("northbridge-cs");
+  const baselineEligibility = evaluateEligibility(profile, program);
+
+  const rec = assessProgram(profile, program);
+  const evidence = buildCardEvidence(profile, rec);
+  assert.ok(evidence.length >= 3);
+
+  const afterEligibility = evaluateEligibility(profile, program);
+  assert.equal(baselineEligibility, afterEligibility);
+  assert.equal(rec.eligibility, baselineEligibility);
+});
+
+test("activitiesAndAchievements has zero effect on Fit Score, eligibility, and card evidence", () => {
+  const program = byId("northbridge-cs");
+  const withActivities = { ...profile, activitiesAndAchievements: "Winner of national informatics olympiad; 100 hours volunteering" };
+
+  const baselineFit = calculateFit(profile, program);
+  const actFit = calculateFit(withActivities, program);
+  assert.deepEqual(baselineFit, actFit);
+
+  const baselineElig = evaluateEligibility(profile, program);
+  const actElig = evaluateEligibility(withActivities, program);
+  assert.equal(baselineElig, actElig);
+
+  const baselineEvidence = buildCardEvidence(profile, assessProgram(profile, program));
+  const actEvidence = buildCardEvidence(withActivities, assessProgram(withActivities, program));
+  assert.deepEqual(baselineEvidence, actEvidence);
+});
+
+test("evidence ordering is strictly deterministic across profiles and criteria sets", () => {
+  const program = byId("northbridge-cs");
+  const profiles = [
+    profile,
+    { ...profile, gpa: 2.5, ieltsScore: 5.5, annualBudget: 5000 },
+    { ...profile, gpa: null, ieltsScore: null, annualBudget: null, preferredLanguage: "English" },
+    { ...profile, gpa: 4.0, ieltsScore: 8.5, satScore: 1550, preferredLanguage: "English", annualBudget: 50000 },
+  ];
+
+  for (const candidate of profiles) {
+    const evidence = buildCardEvidence(candidate, assessProgram(candidate, program));
+    const indices = evidence.map((item) => canonicalEvidenceOrder[item.key]);
+    for (let i = 1; i < indices.length; i++) {
+      assert.ok(indices[i] > indices[i - 1], `Indices should be strictly increasing: ${indices.join(", ")}`);
+    }
+  }
+});
+
+test("strong, gap-heavy, and unknown profiles all receive 3 to 5 actionable, meaningful rows", () => {
+  const program = byId("northbridge-cs");
+
+  // Strong profile
+  const strongProfile = {
+    ...profile,
+    gpa: 3.9,
+    ieltsScore: 7.5,
+    satScore: 1400,
+    preferredLanguage: "English",
+    annualBudget: 30000,
+    budgetCurrency: "USD",
+  };
+  const strongEvidence = buildCardEvidence(strongProfile, assessProgram(strongProfile, program));
+  assert.ok(strongEvidence.length >= 3 && strongEvidence.length <= 5);
+  assert.ok(strongEvidence.some((item) => item.status === "Match"));
+
+  // Gap-heavy profile
+  const gapProfile = {
+    ...profile,
+    gpa: 2.8,
+    ieltsScore: 5.5,
+    annualBudget: 5000,
+    budgetCurrency: "USD",
+  };
+  const gapEvidence = buildCardEvidence(gapProfile, assessProgram(gapProfile, program));
+  assert.ok(gapEvidence.length >= 3 && gapEvidence.length <= 5);
+  assert.ok(gapEvidence.some((item) => item.status === "Action needed"));
+
+  // Unknown / minimal profile
+  const unknownProfile = {
+    ...profile,
+    gpa: null,
+    ieltsScore: null,
+    satScore: null,
+    annualBudget: null,
+    targetIntake: null,
+    preferredLanguage: null,
+  };
+  const unknownEvidence = buildCardEvidence(unknownProfile, assessProgram(unknownProfile, program));
+  assert.ok(unknownEvidence.length >= 3 && unknownEvidence.length <= 5);
+  assert.ok(unknownEvidence.some((item) => item.status === "Needs verification"));
+});
+
+test("selectCardEvidence respects custom count limits and handles fewer criteria safely", () => {
+  const all = buildProfileProgramCriteria(profile, assessProgram(profile, byId("northbridge-cs")));
+  const three = selectCardEvidence(all, 3);
+  assert.equal(three.length, 3);
+
+  const four = selectCardEvidence(all, 4);
+  assert.equal(four.length, 4);
+
+  const capped = selectCardEvidence(all.slice(0, 2), 4);
+  assert.equal(capped.length, 2);
 });

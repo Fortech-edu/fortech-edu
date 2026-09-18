@@ -265,6 +265,108 @@ export function buildProfileProgramCriteria(
   return [field, academic, ielts, sat, languageOfInstruction, tuition, timeline];
 }
 
+export const canonicalEvidenceOrder: Record<ProfileProgramCriterion["key"], number> = {
+  field: 0,
+  academic: 1,
+  ielts: 2,
+  sat: 3,
+  languageOfInstruction: 4,
+  tuition: 5,
+  timeline: 6,
+};
+
+export function criterionRelevance(criterion: ProfileProgramCriterion): number {
+  let score = 0;
+
+  switch (criterion.status) {
+    case "Action needed":
+      score += 40;
+      break;
+    case "Not comparable":
+      score += 35;
+      break;
+    case "Match":
+      score += 30;
+      break;
+    case "Needs verification":
+      if (
+        criterion.profileValue !== "Not provided" ||
+        (criterion.programValue !== "Unknown" && criterion.programValue !== "Not required")
+      ) {
+        score += 25;
+      } else {
+        score += 15;
+      }
+      break;
+    case "Not required":
+      if (criterion.key === "sat") {
+        score += 25;
+      } else {
+        score += 5;
+      }
+      break;
+  }
+
+  const domainWeight: Record<ProfileProgramCriterion["key"], number> = {
+    field: 15,
+    academic: 14,
+    ielts: 13,
+    sat: 11,
+    languageOfInstruction: 10,
+    tuition: 9,
+    timeline: 8,
+  };
+
+  score += domainWeight[criterion.key] ?? 0;
+
+  return score;
+}
+
+export function selectCardEvidence(
+  criteria: ProfileProgramCriterion[],
+  options?: { min?: number; max?: number } | number,
+): ProfileProgramCriterion[] {
+  const minCount = typeof options === "number" ? options : (options?.min ?? 4);
+  const maxCount = typeof options === "number" ? options : (options?.max ?? 5);
+
+  if (criteria.length <= minCount) {
+    return [...criteria].sort(
+      (a, b) => canonicalEvidenceOrder[a.key] - canonicalEvidenceOrder[b.key],
+    );
+  }
+
+  const scored = criteria
+    .map((criterion) => ({
+      criterion,
+      relevance: criterionRelevance(criterion),
+    }))
+    .sort(
+      (a, b) =>
+        b.relevance - a.relevance ||
+        canonicalEvidenceOrder[a.criterion.key] - canonicalEvidenceOrder[b.criterion.key],
+    );
+
+  const baseline = Math.min(maxCount, Math.max(minCount, 4));
+  let count = baseline;
+  if (count < maxCount && scored[count] && scored[count].relevance >= 35) {
+    count++;
+  }
+
+  const selected = scored.slice(0, count).map((item) => item.criterion);
+  return selected.sort(
+    (a, b) => canonicalEvidenceOrder[a.key] - canonicalEvidenceOrder[b.key],
+  );
+}
+
+export function buildCardEvidence(
+  profile: StudentProfile,
+  recommendation: Recommendation,
+  options?: { min?: number; max?: number } | number,
+): ProfileProgramCriterion[] {
+  const criteria = buildProfileProgramCriteria(profile, recommendation);
+  return selectCardEvidence(criteria, options);
+}
+
 function compareValue(value: string | null | undefined) {
   return value?.trim() || "Unknown";
 }
