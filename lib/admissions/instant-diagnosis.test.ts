@@ -34,8 +34,8 @@ test("the selected target resolves to the current production program record", ()
   assert.strictEqual(selected, programs.find(({ id }) => id === "asu-data-science"));
   assert.equal(selected?.universityName, "Arizona State University");
   assert.equal(selected?.programName, "Data Science");
-  assert.equal(selected?.country, "United States");
-  assert.equal(criterion(profile, selected!, "academic").programValue, "GPA 3 minimum");
+  assert.equal(criterion(profile, selected!, "academic").programValue, "Aptitude requirement · qualification-specific criteria");
+  assert.equal(criterion(profile, selected!, "academic").status, "Needs verification");
 });
 
 test("known satisfied and unmet requirements produce match and evidence-backed gap states", () => {

@@ -41,7 +41,11 @@ test("roadmap horizons are a stable NOW, NEXT 30 DAYS, THIS SEMESTER, BEFORE APP
 });
 
 test("a strong profile has no fake requirement gaps and still has useful actions", () => {
-  const program = productionById("asu-data-science");
+  const baseProgram = productionById("asu-data-science");
+  const program = {
+    ...baseProgram,
+    academicRequirement: { label: "GPA", minimumScore: 3.0, isRequired: true, notes: null },
+  };
   const items = generateRoadmap({ ...profile, intendedField: "Data Science", gpa: 3.5, ieltsScore: 7 }, program);
 
   assert.equal(items.some(({ type }) => type === "requirement"), false);
@@ -116,6 +120,7 @@ test("qualification-specific and unknown academic criteria stay verification wor
   assert.equal(qualificationSpecific!.type, "verification");
   assert.equal(unknown!.type, "verification");
   assert.equal(hasStrongProfileState(generateRoadmap(profile, productionById("hkust-computer-science"))), false);
+  assert.equal(hasStrongProfileState(generateRoadmap(profile, productionById("asu-data-science"))), false);
 });
 
 test("a numeric requirement on a non-GPA scale never becomes a GPA improvement task", () => {
@@ -278,7 +283,10 @@ test("tasks map to deterministic time horizons without fabricated dates", () => 
 });
 
 test("a strong profile has no high-priority urgency and an empty NOW horizon", () => {
-  const program = productionById("asu-data-science");
+  const program = {
+    ...productionById("asu-data-science"),
+    academicRequirement: { label: "GPA", minimumScore: 3.0, isRequired: true, notes: null },
+  };
   const items = generateRoadmap({ ...profile, intendedField: "Data Science", gpa: 3.5, ieltsScore: 7 }, program);
 
   assert.equal(items.every(({ priority }) => priority !== "high"), true);
