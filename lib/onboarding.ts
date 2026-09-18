@@ -153,3 +153,25 @@ export function stepErrors(step: number, profile: StudentProfile) {
 export function validStep(step: number, profile: StudentProfile) {
   return Object.keys(stepErrors(step, profile)).length === 0;
 }
+
+export function createLandingInstantProfile(
+  program: UniversityProgram,
+  currentState: {
+    currentStudyStage: string | null;
+    gpa: number | null;
+    ieltsScore: number | null;
+    satScore: number | null;
+  },
+  existingProfile?: StudentProfile | null,
+  previousTarget?: UniversityProgram | null,
+): StudentProfile {
+  const base = existingProfile ?? emptyProfile;
+  const profileWithScores: StudentProfile = {
+    ...base,
+    currentStudyStage: currentState.currentStudyStage,
+    gpa: currentState.gpa,
+    ieltsScore: currentState.ieltsScore,
+    satScore: currentState.satScore,
+  };
+  return applyTargetProfileDefaults(profileWithScores, program, previousTarget);
+}
