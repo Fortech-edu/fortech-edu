@@ -15,6 +15,8 @@ import {
   criterionRelevance,
   formatRequirement,
   formatScoreComponent,
+  getCompareButtonPresentation,
+  getCompareSelectionSummary,
   getProgramSource,
   resolveComparison,
   selectCardEvidence,
@@ -227,6 +229,86 @@ test("compare resolution rejects zero, one, invalid, duplicate, and profile-inva
   assert.equal(resolveComparison([first.program.id, first.program.id], current), null);
   assert.equal(resolveComparison([first.program.id, second.program.id], [first]), null);
   assert.deepEqual(resolveComparison([first.program.id, second.program.id], current), [first, second]);
+  assert.equal(resolveComparison([first.program.id, second.program.id, "extra"], current), null);
+});
+
+test("compare selection summary formats zero, one, and two states with actionable guidance", () => {
+  const zero = getCompareSelectionSummary([]);
+  assert.equal(zero.count, 0);
+  assert.equal(zero.max, 2);
+  assert.equal(zero.isReady, false);
+  assert.equal(zero.isFull, false);
+  assert.equal(zero.remaining, 2);
+  assert.equal(zero.counterLabel, "0 of 2 selected");
+  assert.match(zero.helperText, /Select up to 2 programs/);
+
+  const one = getCompareSelectionSummary(["progA"]);
+  assert.equal(one.count, 1);
+  assert.equal(one.isReady, false);
+  assert.equal(one.isFull, false);
+  assert.equal(one.remaining, 1);
+  assert.equal(one.counterLabel, "1 of 2 selected");
+  assert.match(one.helperText, /Select 1 more program/);
+
+  const two = getCompareSelectionSummary(["progA", "progB"]);
+  assert.equal(two.count, 2);
+  assert.equal(two.isReady, true);
+  assert.equal(two.isFull, true);
+  assert.equal(two.remaining, 0);
+  assert.equal(two.counterLabel, "2 of 2 selected");
+  assert.match(two.helperText, /Comparison ready/);
+
+  // Duplicates are deduplicated
+  const dup = getCompareSelectionSummary(["progA", "progA"]);
+  assert.equal(dup.count, 1);
+});
+
+test("compare button presentation replaces vague limit with clear actionable feedback", () => {
+  // Not selected, under limit: shows Compare
+  const initial = getCompareButtonPresentation({
+    isSelected: false,
+    isFull: false,
+    programName: "Software Engineering",
+  });
+  assert.equal(initial.text, "Compare");
+  assert.equal(initial.disabled, false);
+  assert.equal(initial.isLimitReached, false);
+  assert.equal(initial.ariaLabel, "Add Software Engineering to comparison");
+
+  // Selected: shows Selected · Remove
+  const selected = getCompareButtonPresentation({
+    isSelected: true,
+    isFull: false,
+    programName: "Software Engineering",
+  });
+  assert.equal(selected.text, "Selected · Remove");
+  assert.equal(selected.disabled, false);
+  assert.equal(selected.isLimitReached, false);
+  assert.equal(selected.ariaLabel, "Remove Software Engineering from comparison");
+
+  // Selected even when 2 are selected: still enables removal
+  const selectedFull = getCompareButtonPresentation({
+    isSelected: true,
+    isFull: true,
+    programName: "Software Engineering",
+  });
+  assert.equal(selectedFull.text, "Selected · Remove");
+  assert.equal(selectedFull.disabled, false);
+  assert.equal(selectedFull.isLimitReached, false);
+
+  // Unselected when limit reached (2 of 2): explains the 2-program limit and action needed
+  const limitReached = getCompareButtonPresentation({
+    isSelected: false,
+    isFull: true,
+    programName: "Computer Science",
+  });
+  assert.equal(limitReached.text, "2 of 2 selected · Remove one first");
+  assert.equal(limitReached.disabled, true);
+  assert.equal(limitReached.isLimitReached, true);
+  assert.match(limitReached.title, /compare up to 2 programs/i);
+  assert.match(limitReached.title, /Remove one of your selected programs/i);
+  assert.match(limitReached.ariaLabel, /2 of 2 selected/i);
+  assert.match(limitReached.ariaLabel, /Remove a program to compare/i);
 });
 
 test("criterionRelevance scores actionable gaps and non-comparables above matches and unknowns", () => {

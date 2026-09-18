@@ -9,11 +9,13 @@ import {
   programChangeDescription,
   recentChangeLabel,
 } from "../../lib/admissions/change-impact-presentation.ts";
+import { getCompareSelectionSummary } from "../../lib/admissions/presentation.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadRecentChangeImpact } from "../../lib/storage/change-impact.ts";
 import { loadStoredProfile } from "../../lib/storage/profile.ts";
 import {
+  clearCompareSelection,
   loadCompareSelection,
   saveCompareSelection,
   toggleCompareSelection,
@@ -52,6 +54,16 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
     saveCompareSelection(next);
   }
 
+  function handleClear() {
+    setSelected([]);
+    clearCompareSelection();
+  }
+
+  const summary = getCompareSelectionSummary(selected);
+  const selectedPrograms = selected
+    .map((id) => recommendations.find((r) => r.program.id === id)?.program)
+    .filter((prog): prog is NonNullable<typeof prog> => Boolean(prog));
+
   return (
     <div className="matches-view space-y-8">
       <section className="product-hero" aria-labelledby="matches-title">
@@ -84,16 +96,69 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
         <p className="hidden text-sm text-muted sm:block">Highest-ranked first</p>
       </div>
 
-      <aside id="comparison-selection" className="comparison-bar p-4 sm:flex sm:items-center sm:justify-between" aria-label="Comparison selection">
-        <div>
-          <p className="font-semibold text-forest-900">{selected.length} selected</p>
-          <p className="mt-0.5 text-sm text-muted">{selected.length === 2 ? "Your comparison is ready." : `Select ${2 - selected.length} more to compare.`}</p>
+      <aside id="comparison-selection" className="comparison-bar p-4 sm:p-5" aria-label="Comparison selection">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex rounded-full bg-forest-100 px-3 py-0.5 text-xs font-bold text-forest-800">
+                {summary.counterLabel}
+              </span>
+              <p className="font-semibold text-forest-900">Side-by-side comparison</p>
+            </div>
+            <p className="mt-1 text-sm text-muted">{summary.helperText}</p>
+
+            {selectedPrograms.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Selected programs to compare">
+                {selectedPrograms.map((prog) => (
+                  <span
+                    key={prog.id}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-forest-200 bg-white px-3 py-1 text-xs font-medium text-forest-900 shadow-sm"
+                  >
+                    <span className="truncate max-w-[200px] sm:max-w-[260px]">{prog.programName}</span>
+                    <button
+                      type="button"
+                      onClick={() => toggle(prog.id)}
+                      aria-label={`Remove ${prog.programName} from comparison`}
+                      title={`Remove ${prog.programName}`}
+                      className="ml-0.5 inline-flex h-4 w-4 items-center justify-center rounded-full text-forest-600 hover:bg-forest-100 hover:text-red-700 focus-visible:outline-1 focus-visible:outline-forest-600"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {selected.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="min-h-11 rounded-full border border-forest-200 px-4 text-sm font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
+              >
+                Clear selection
+              </button>
+            )}
+            {summary.isReady ? (
+              <Link
+                href="/compare"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-forest-700 px-5 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 sm:w-auto"
+              >
+                Compare programs (2 of 2)
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="min-h-11 w-full rounded-full bg-slate-200 px-5 font-semibold text-slate-500 cursor-not-allowed sm:w-auto"
+                title="Select 2 programs to compare side-by-side"
+              >
+                Compare programs ({summary.count} of 2)
+              </button>
+            )}
+          </div>
         </div>
-        {selected.length === 2 ? (
-          <Link href="/compare" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full bg-forest-700 px-5 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 sm:mt-0 sm:w-auto">Compare programs</Link>
-        ) : (
-          <button type="button" disabled className="mt-3 min-h-11 w-full rounded-full bg-slate-200 px-5 font-semibold text-slate-500 sm:mt-0 sm:w-auto">Compare programs</button>
-        )}
       </aside>
 
       {recommendations.map((recommendation, index) => (
@@ -104,7 +169,7 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
           rank={index + 1}
           recentChange={recentChangeLabel(recentChanges.get(recommendation.program.id))}
           selected={selected.includes(recommendation.program.id)}
-          disabled={selected.length === 2 && !selected.includes(recommendation.program.id)}
+          disabled={selected.length >= 2 && !selected.includes(recommendation.program.id)}
           compareReady={selected.length === 2}
           onCompare={() => toggle(recommendation.program.id)}
         />

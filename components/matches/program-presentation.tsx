@@ -9,6 +9,7 @@ import {
   formatRequirement,
   formatScoreComponent,
   formatTuition,
+  getCompareButtonPresentation,
   scoreComponents,
   sourceTypeLabels,
 } from "../../lib/admissions/presentation.ts";
@@ -250,6 +251,11 @@ export function RecommendationCard({
   const { program } = recommendation;
   const cardProfile = profile ?? emptyProfile;
   const evidence = buildCardEvidence(cardProfile, recommendation);
+  const compareButton = getCompareButtonPresentation({
+    isSelected: selected,
+    isFull: disabled,
+    programName: program.programName,
+  });
 
   return (
     <article className="recommendation-row py-7 sm:py-10">
@@ -317,8 +323,16 @@ export function RecommendationCard({
 
       <div className="mt-6 flex flex-col gap-2 border-t border-forest-100 pt-5 sm:flex-row sm:justify-end">
         <Link href={`/matches/${program.id}`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest-700 px-6 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">View program</Link>
-        <button type="button" aria-pressed={selected} disabled={disabled} onClick={onCompare} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">
-          {selected ? "Selected · Remove" : disabled ? "Compare limit reached" : "Compare"}
+        <button
+          type="button"
+          aria-pressed={selected}
+          disabled={disabled}
+          onClick={onCompare}
+          title={compareButton.title}
+          aria-label={compareButton.ariaLabel}
+          className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {compareButton.text}
         </button>
         {compareReady ? <Link href="/compare" className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest-900 px-6 font-semibold text-white hover:bg-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Compare 2 programs</Link> : null}
       </div>

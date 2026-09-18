@@ -413,11 +413,101 @@ function tuitionComparisonNote(first: UniversityProgram, second: UniversityProgr
   return "Directly comparable: same currency and billing period.";
 }
 
+export interface CompareSelectionSummary {
+  count: number;
+  max: number;
+  isReady: boolean;
+  isFull: boolean;
+  remaining: number;
+  counterLabel: string;
+  helperText: string;
+}
+
+export function getCompareSelectionSummary(selectedIds: readonly string[]): CompareSelectionSummary {
+  const unique = [...new Set(selectedIds)];
+  const max = 2;
+  const count = Math.min(unique.length, max);
+  const isReady = count === max;
+  const isFull = count >= max;
+  const remaining = Math.max(0, max - count);
+
+  const counterLabel = `${count} of ${max} selected`;
+  let helperText = "";
+
+  if (count === 0) {
+    helperText = "Select up to 2 programs to compare side-by-side.";
+  } else if (count === 1) {
+    helperText = "Select 1 more program to compare side-by-side.";
+  } else {
+    helperText = "Comparison ready. To compare a different program, remove one from your selection.";
+  }
+
+  return {
+    count,
+    max,
+    isReady,
+    isFull,
+    remaining,
+    counterLabel,
+    helperText,
+  };
+}
+
+export interface CompareButtonPresentation {
+  text: string;
+  ariaLabel: string;
+  title: string;
+  disabled: boolean;
+  isLimitReached: boolean;
+}
+
+export function getCompareButtonPresentation({
+  isSelected,
+  isFull,
+  programName,
+}: {
+  isSelected: boolean;
+  isFull: boolean;
+  programName?: string;
+}): CompareButtonPresentation {
+  if (isSelected) {
+    return {
+      text: "Selected · Remove",
+      ariaLabel: programName ? `Remove ${programName} from comparison` : "Remove from comparison",
+      title: "Click to remove this program from comparison",
+      disabled: false,
+      isLimitReached: false,
+    };
+  }
+
+  if (isFull) {
+    return {
+      text: "2 of 2 selected · Remove one first",
+      ariaLabel: programName
+        ? `Comparison limit reached (2 of 2 selected). Remove a program to compare ${programName}.`
+        : "Comparison limit reached (2 of 2 selected). Remove a program to compare.",
+      title: "You can compare up to 2 programs side-by-side. Remove one of your selected programs to choose another.",
+      disabled: true,
+      isLimitReached: true,
+    };
+  }
+
+  return {
+    text: "Compare",
+    ariaLabel: programName ? `Add ${programName} to comparison` : "Add to comparison",
+    title: "Add this program to side-by-side comparison",
+    disabled: false,
+    isLimitReached: false,
+  };
+}
+
 export function resolveComparison(
   selectedIds: readonly string[],
   recommendations: readonly Recommendation[],
 ): [Recommendation, Recommendation] | null {
-  if (new Set(selectedIds).size !== 2) return null;
-  const selected = selectedIds.map((id) => recommendations.find(({ program }) => program.id === id));
-  return selected[0] && selected[1] ? [selected[0], selected[1]] : null;
+  const uniqueIds = [...new Set(selectedIds)];
+  if (uniqueIds.length !== 2) return null;
+  const first = recommendations.find(({ program }) => program.id === uniqueIds[0]);
+  const second = recommendations.find(({ program }) => program.id === uniqueIds[1]);
+  return first && second ? [first, second] : null;
 }
