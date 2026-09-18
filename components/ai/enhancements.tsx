@@ -11,7 +11,7 @@ import {
   toAIProfile,
   validateRecommendationOutput,
 } from "../../lib/ai/schemas.ts";
-import type { DiagnosisAIOutput } from "../../lib/ai/schemas.ts";
+import type { DiagnosisAIOutput, RecommendationAIOutput } from "../../lib/ai/schemas.ts";
 import type { AIResult } from "../../lib/ai/service.ts";
 import type { Diagnosis, Recommendation, StudentProfile } from "../../types/admissions.ts";
 
@@ -97,7 +97,10 @@ export function RecommendationEnhancement({ profile, recommendation }: { profile
       gaps: recommendation.gaps,
     },
   };
-  const [content, setContent] = useState(() => recommendationFallback(fallbackInput));
+  const [result, setResult] = useState<AIResult<RecommendationAIOutput>>(() => ({
+    content: recommendationFallback(fallbackInput),
+    source: "fallback",
+  }));
   const [loading, setLoading] = useState(true);
   const requestBody = JSON.stringify({ profile: aiProfile, programId: recommendation.program.id });
   const cacheKey = createAIResultCacheKey("recommendation", requestBody);
@@ -108,7 +111,8 @@ export function RecommendationEnhancement({ profile, recommendation }: { profile
       .then((result: unknown) => {
         if (typeof result !== "object" || result === null || !("content" in result)) return;
         const validated = validateRecommendationOutput((result as { content: unknown }).content);
-        if (active && validated) setContent(validated);
+        const source = (result as { source?: unknown }).source;
+        if (active && validated && (source === "ai" || source === "fallback")) setResult({ content: validated, source });
       })
       .catch(() => undefined)
       .finally(() => { if (active) setLoading(false); });
@@ -120,13 +124,14 @@ export function RecommendationEnhancement({ profile, recommendation }: { profile
   return (
     <section className="mt-7 rounded-2xl bg-forest-50 p-5" aria-labelledby="ai-fit-title" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="ai-fit-title" className="text-xl font-semibold text-forest-900">Why this fits your profile</h2>
-        {loading && <span className="text-xs font-medium text-muted">Personalizing explanation…</span>}
+        <h2 id="ai-fit-title" className="text-xl font-semibold text-forest-900">Personalized explanation</h2>
+        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-forest-700">{loading ? "Preparing explanation…" : result.source === "ai" ? "AI-assisted" : "Based on match facts"}</span>
       </div>
-      <p className="mt-3 text-sm leading-6 text-muted">{content.summary}</p>
+      <p className="mt-3 text-xs leading-5 text-muted">{result.source === "ai" ? "AI explains the deterministic match below; it cannot change Fit Score, eligibility, or requirements." : "This explanation uses only the deterministic match facts shown on this page."}</p>
+      <p className="mt-3 text-sm leading-6 text-ink">{result.content.summary}</p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <ExplanationList title="What aligns" items={content.whyItFits} />
-        <ExplanationList title="What to check" items={content.watchOutFor} />
+        <ExplanationList title="What aligns" items={result.content.whyItFits} />
+        <ExplanationList title="What to check" items={result.content.watchOutFor} />
       </div>
     </section>
   );

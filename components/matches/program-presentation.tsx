@@ -1,12 +1,15 @@
 import Link from "next/link";
-import type { EligibilityStatus, Recommendation } from "../../types/admissions.ts";
+import type { EligibilityStatus, Recommendation, StudentProfile } from "../../types/admissions.ts";
 import {
+  buildProfileProgramCriteria,
   eligibilityLabels,
   formatRequirement,
   formatScoreComponent,
   formatTuition,
   scoreComponents,
+  sourceTypeLabels,
 } from "../../lib/admissions/presentation.ts";
+import type { ComparisonStatus } from "../../lib/admissions/presentation.ts";
 
 const statusStyles: Record<EligibilityStatus, string> = {
   eligible_now: "bg-forest-100 text-forest-700",
@@ -27,9 +30,9 @@ export function ScoreSummary({ recommendation }: { recommendation: Recommendatio
   return (
     <div className="grid grid-cols-2 gap-3">
       <div className="rounded-2xl bg-forest-900 p-4 text-white">
-        <p className="text-xs font-medium text-forest-100">Profile match</p>
-        <p className="mt-1 text-3xl font-semibold">{recommendation.fitScore}</p>
-        <p className="text-xs text-forest-100">out of 100</p>
+        <p className="text-xs font-medium text-forest-100">Profile alignment</p>
+        <p className="mt-1 text-3xl font-semibold">Fit {recommendation.fitScore}</p>
+        <p className="text-xs text-forest-100">not admission probability</p>
       </div>
       <div className="rounded-2xl bg-forest-50 p-4">
         <p className="text-xs font-medium text-muted">Data coverage</p>
@@ -97,6 +100,66 @@ export function ReasonsAndGaps({ recommendation }: { recommendation: Recommendat
   );
 }
 
+const comparisonStatusStyles: Record<ComparisonStatus, string> = {
+  "Match": "bg-forest-100 text-forest-700",
+  "Action needed": "bg-amber-100 text-amber-900",
+  "Needs verification": "bg-slate-100 text-slate-700",
+  "Not required": "bg-forest-50 text-forest-700",
+  "Not comparable": "bg-sand-100 text-amber-900",
+};
+
+export function ProfileProgramComparison({ profile, recommendation }: { profile: StudentProfile; recommendation: Recommendation }) {
+  const criteria = buildProfileProgramCriteria(profile, recommendation);
+  return (
+    <section aria-labelledby="profile-comparison-title">
+      <div className="max-w-3xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">The decision view</p>
+        <h2 id="profile-comparison-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900 sm:text-3xl">Your profile vs this program</h2>
+        <p className="mt-2 text-sm leading-6 text-muted">Known facts are compared directly. Missing or non-comparable information stays explicit.</p>
+      </div>
+
+      <div className="mt-6 hidden grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] gap-5 border-b border-forest-200 px-4 pb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted md:grid" aria-hidden="true">
+        <span>Criterion</span><span>Your profile</span><span>Program</span><span>Status</span>
+      </div>
+      <div className="divide-y divide-forest-100 border-y border-forest-100 md:border-t-0">
+        {criteria.map((criterion) => (
+          <article key={criterion.key} className="grid gap-3 py-5 md:grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] md:gap-5 md:px-4">
+            <h3 className="font-semibold text-forest-900">{criterion.label}</h3>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted md:sr-only">Your profile</p>
+              <p className="mt-1 break-words text-sm font-semibold text-ink md:mt-0">{criterion.profileValue}</p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted md:sr-only">Program</p>
+              <p className="mt-1 break-words text-sm font-semibold text-ink md:mt-0">{criterion.programValue}</p>
+            </div>
+            <div>
+              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${comparisonStatusStyles[criterion.status]}`}>{criterion.status}</span>
+              <p className="mt-2 text-xs leading-5 text-muted">{criterion.detail}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function WhyProgramAppears({ recommendation }: { recommendation: Recommendation }) {
+  return (
+    <section aria-labelledby="why-program-title">
+      <h2 id="why-program-title" className="text-xl font-semibold text-forest-900">Why this program appears</h2>
+      <ul className="mt-3 space-y-2">
+        {recommendation.reasons.slice(0, 3).map((reason) => (
+          <li key={reason} className="flex gap-2.5 text-sm leading-6 text-ink">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-forest-100 text-[11px] font-bold text-forest-700" aria-hidden="true">✓</span>
+            <span>{reason}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function List({ title, items, marker, markerClass }: { title: string; items: string[]; marker: string; markerClass: string }) {
   return (
     <div>
@@ -135,7 +198,7 @@ export function ProgramSources({ recommendation }: { recommendation: Recommendat
           {program.sources.map((source) => (
             <li key={`${source.type}:${source.url}`}>
               <a href={source.url} target="_blank" rel="noopener noreferrer" aria-label={`${source.title} (opens in a new tab)`} className="block rounded-xl bg-forest-50 px-3 py-2.5 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-                <span className="mr-2 text-xs uppercase tracking-wide text-muted">{source.type}</span>{source.title}
+                <span className="mr-2 text-xs uppercase tracking-wide text-muted">{sourceTypeLabels[source.type]}</span>{source.title}
               </a>
             </li>
           ))}

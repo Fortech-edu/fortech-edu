@@ -1,23 +1,50 @@
 import type {
+  ProgramSource,
   Requirement,
   RoadmapItem,
+  RoadmapPhase,
   StudentProfile,
   UniversityProgram,
 } from "../../types/admissions.ts";
+import { buildProfileProgramCriteria, formatTuition } from "./presentation.ts";
+import { assessProgram } from "./recommend.ts";
+
+export const roadmapPhases: ReadonlyArray<{
+  id: RoadmapPhase;
+  label: string;
+  description: string;
+}> = [
+  { id: "now", label: "Now", description: "Resolve known gaps and verify requirements that are still unclear." },
+  { id: "prepare", label: "Prepare", description: "Confirm the official checklist, then assemble only verified materials." },
+  { id: "apply", label: "Apply", description: "Recheck timing and follow the university's official application instructions." },
+];
+
+function sourceFor(program: UniversityProgram, ...preferredTypes: ProgramSource["type"][]) {
+  return preferredTypes
+    .map((type) => program.sources.find((source) => source.type === type))
+    .find((source) => source !== undefined) ?? null;
+}
 
 function task(
-  programId: string,
-  type: string,
+  program: UniversityProgram,
+  id: string,
   title: string,
   description: string,
+  phase: RoadmapItem["phase"],
+  type: RoadmapItem["type"],
+  source: ProgramSource | null = null,
   dueDate: string | null = null,
 ): RoadmapItem {
   return {
-    id: `${programId}:${type}`,
+    id: `${program.id}:${id}`,
     title,
     description,
     dueDate,
     status: "not_started",
+    phase,
+    type,
+    officialSourceLabel: source?.title ?? null,
+    officialSourceUrl: source?.url ?? null,
   };
 }
 
@@ -29,32 +56,55 @@ function isUnknown(requirement: Requirement | null) {
   );
 }
 
+function scoreTasks(
+  profile: StudentProfile,
+  program: UniversityProgram,
+  key: "ielts" | "sat",
+  requirement: Requirement | null,
+) {
+  const items: RoadmapItem[] = [];
+  if (requirement?.isRequired === false) return items;
+
+  const label = key === "ielts" ? "IELTS" : "SAT";
+  const value = key === "ielts" ? profile.ieltsScore : profile.satScore;
+  const source = sourceFor(program, "admissions", "program");
+
+  if (requirement?.isRequired !== true) {
+    items.push(task(program, `verify-${key}`, `Verify whether ${label} is required`, `The current verified data does not state this program's ${label} requirement. Confirm it before planning test preparation.`, "now", "verification", source));
+    return items;
+  }
+
+  if (requirement.minimumScore === null) {
+    items.push(task(program, `verify-${key}`, `Confirm the required ${label} score`, `${program.programName} requires ${label}, but the current data has no directly comparable minimum.`, "now", "verification", source));
+    return items;
+  }
+
+  if (value === null || value < requirement.minimumScore) {
+    items.push(task(
+      program,
+      `prepare-${key}`,
+      value === null ? `Plan for the published ${label} requirement` : `Raise your ${label} score to the published minimum`,
+      value === null
+        ? `No ${label} score is recorded. ${program.programName} publishes a minimum of ${requirement.minimumScore}.`
+        : `Your current ${label} score is ${value}; ${program.programName} publishes a minimum of ${requirement.minimumScore}.`,
+      "now",
+      "requirement",
+      source,
+    ));
+    items.push(task(program, `take-${key}`, `Take or retake ${label}`, `Obtain an official result that meets the published minimum of ${requirement.minimumScore} before applying.`, "prepare", "preparation", source));
+  }
+
+  return items;
+}
+
 export function generateRoadmap(
   profile: StudentProfile,
   program: UniversityProgram,
 ): RoadmapItem[] {
   const items: RoadmapItem[] = [];
   const academic = program.academicRequirement;
-  const ielts = program.ieltsRequirement;
-  const sat = program.satRequirement;
-
-  if (isUnknown(academic)) {
-    items.push(task(program.id, "verify-academic", "Verify the academic requirement", "Confirm the academic entry requirement with the program before planning your application."));
-  } else if (academic?.isRequired && profile.gpa === null) {
-    items.push(task(program.id, "verify-academic-score", "Confirm your academic score", `Record or verify your current GPA against the known requirement of ${academic.minimumScore}.`));
-  }
-
-  if (isUnknown(ielts)) {
-    items.push(task(program.id, "verify-language", "Verify the language requirement", "Confirm whether IELTS is required and what score is accepted. No score is assumed."));
-  }
-
-  if (isUnknown(sat)) {
-    items.push(task(program.id, "verify-sat", "Verify the SAT requirement", "Confirm whether an SAT score is required. No score is assumed."));
-  }
-
-  if (program.deadline === null) {
-    items.push(task(program.id, "verify-deadline", "Verify the application deadline", "The deadline is unknown. Confirm it before scheduling your application."));
-  }
+  const criteria = new Map(buildProfileProgramCriteria(profile, assessProgram(profile, program)).map((criterion) => [criterion.key, criterion]));
+  const admissionsSource = sourceFor(program, "admissions", "program");
 
   if (
     academic?.isRequired === true &&
@@ -62,37 +112,83 @@ export function generateRoadmap(
     profile.gpa !== null &&
     profile.gpa < academic.minimumScore
   ) {
-    items.push(task(program.id, "improve-academics", "Address the academic requirement gap", `Your current GPA is ${profile.gpa}; the listed requirement is ${academic.minimumScore}. Review realistic improvement or alternative options without assuming admission.`));
+    items.push(task(program, "improve-academics", "Address the published academic requirement gap", `Your current GPA is ${profile.gpa}; ${program.programName} publishes a minimum of ${academic.minimumScore}.`, "now", "requirement", admissionsSource));
+  } else if (academic?.isRequired === true && academic.minimumScore !== null && profile.gpa === null) {
+    items.push(task(program, "verify-academic-score", "Confirm your current GPA", `Record or verify your GPA against the published minimum of ${academic.minimumScore}.`, "now", "requirement", admissionsSource));
   }
 
-  if (
-    ielts?.isRequired === true &&
-    ielts.minimumScore !== null &&
-    (profile.ieltsScore === null || profile.ieltsScore < ielts.minimumScore)
-  ) {
-    const startingPoint = profile.ieltsScore === null ? "No IELTS score is recorded." : `Your current score is ${profile.ieltsScore}.`;
-    items.push(task(program.id, "prepare-ielts", profile.ieltsScore === null ? "Prepare for IELTS" : "Improve your IELTS score", `${startingPoint} Prepare toward the listed requirement of ${ielts.minimumScore}.`));
-    items.push(task(program.id, "take-ielts", "Take or retake IELTS", `Obtain an official result that meets the listed requirement of ${ielts.minimumScore}.`));
+  items.push(...scoreTasks(profile, program, "ielts", program.ieltsRequirement));
+  items.push(...scoreTasks(profile, program, "sat", program.satRequirement));
+
+  if (isUnknown(academic)) {
+    items.push(task(
+      program,
+      "verify-academic",
+      academic?.isRequired === true ? "Verify how your school qualification is evaluated" : "Confirm the academic entry requirements",
+      academic?.isRequired === true
+        ? `${program.programName} publishes qualification-specific academic criteria rather than one directly comparable GPA threshold.`
+        : "The current verified data does not provide a directly comparable academic requirement.",
+      "now",
+      "verification",
+      admissionsSource,
+    ));
   }
 
-  if (
-    sat?.isRequired === true &&
-    sat.minimumScore !== null &&
-    (profile.satScore === null || profile.satScore < sat.minimumScore)
-  ) {
-    const startingPoint = profile.satScore === null ? "No SAT score is recorded." : `Your current score is ${profile.satScore}.`;
-    items.push(task(program.id, "prepare-sat", profile.satScore === null ? "Prepare for the SAT" : "Improve your SAT score", `${startingPoint} Prepare toward the listed requirement of ${sat.minimumScore}.`));
-    items.push(task(program.id, "take-sat", "Take or retake the SAT", `Obtain an official result that meets the listed requirement of ${sat.minimumScore}.`));
+  const tuition = criteria.get("tuition")!;
+  const tuitionSource = sourceFor(program, "tuition", "admissions", "program");
+  if (tuition.status === "Action needed") {
+    items.push(task(program, "plan-budget", "Plan for the published tuition gap", `${tuition.programValue} is above ${tuition.profileValue}. Review how you would fund the difference without assuming unverified funding.`, "prepare", "preparation", tuitionSource));
+  } else if (tuition.status === "Not comparable") {
+    items.push(task(program, "review-tuition", "Review tuition in the published currency", `${formatTuition(program)} cannot be compared directly with your current annual budget. We do not estimate exchange rates.`, "prepare", "verification", tuitionSource));
+  } else if (tuition.status === "Needs verification") {
+    items.push(task(
+      program,
+      "verify-tuition",
+      program.tuition === null || program.tuitionCurrency === null ? "Confirm tuition for this program" : "Add an annual budget and currency",
+      program.tuition === null || program.tuitionCurrency === null
+        ? `The current verified data does not include comparable tuition for ${program.programName}.`
+        : `Use ${formatTuition(program)} to plan a comparable annual budget.`,
+      "prepare",
+      "verification",
+      tuitionSource,
+    ));
   }
 
-  items.push(task(program.id, "prepare-documents", "Prepare application documents", "Collect the general application materials requested by the program. Verify the exact document list before submission."));
+  items.push(task(
+    program,
+    "verify-documents",
+    "Confirm the required application documents",
+    `Review the official admissions page for ${program.programName}. Confirm whether additional materials such as a motivation letter or references are requested before preparing your final package.`,
+    "prepare",
+    "verification",
+    admissionsSource,
+  ));
+  items.push(task(program, "prepare-documents", "Prepare the verified application materials", "Assemble only the materials confirmed by the program's current official instructions.", "prepare", "preparation", admissionsSource));
 
-  if (program.deadline !== null) {
-    items.push(task(program.id, "review-deadline", "Review the application deadline", `Plan around the listed deadline of ${program.deadline}.`, program.deadline));
-  }
+  const deadlineSource = sourceFor(program, "deadline", "admissions", "program");
+  const timeline = criteria.get("timeline")!;
+  items.push(task(
+    program,
+    program.deadline === null ? "verify-deadline" : "review-deadline",
+    program.deadline === null
+      ? "Confirm the application deadline"
+      : timeline.status === "Action needed"
+        ? "Confirm this deadline matches your target intake"
+        : "Recheck the final application deadline",
+    program.deadline === null
+      ? `No verified deadline is available for ${program.programName}. Confirm it before scheduling submission.`
+      : timeline.status === "Action needed"
+        ? `The published deadline is ${program.deadline}, while your target intake is ${profile.targetIntake}. Confirm the correct application cycle.`
+        : `The published deadline is ${program.deadline}. Recheck it on the official page before submitting.`,
+    "apply",
+    "verification",
+    deadlineSource,
+    program.deadline,
+  ));
 
-  items.push(task(program.id, "prepare-application", "Prepare the application", "Review the application for completeness and confirm that current requirements are addressed."));
-  items.push(task(program.id, "submit-application", "Submit the application", program.deadline === null ? "Submit only after verifying the official deadline and application instructions." : `Submit by the listed deadline of ${program.deadline}.`, program.deadline));
+  const applicationSource = sourceFor(program, "admissions", "program");
+  items.push(task(program, "review-application", "Review the official application instructions", `Follow the current application route published for ${program.programName}.`, "apply", "application", applicationSource));
+  items.push(task(program, "submit-application", "Submit through the official application route", program.deadline === null ? "Submit only after confirming the deadline, required materials, and official instructions." : `Submit the verified application package by the published deadline of ${program.deadline}.`, "apply", "application", applicationSource, program.deadline));
 
   return items;
 }
@@ -113,4 +209,10 @@ export function getNextAction(
 ) {
   const completed = new Set(completedIds);
   return items.find(({ id }) => !completed.has(id)) ?? null;
+}
+
+export function hasStrongProfileState(items: readonly RoadmapItem[]) {
+  return !items.some(({ id, type }) =>
+    type === "requirement" || /:verify-(?:academic|ielts|sat)$/.test(id),
+  );
 }

@@ -15,12 +15,12 @@ import {
 } from "../../lib/storage/selection.ts";
 import {
   EligibilityBadge,
-  ProgramFacts,
+  ProfileProgramComparison,
   ProgramSources,
-  ReasonsAndGaps,
   ScoreBreakdown,
   ScoreSummary,
   SourceState,
+  WhyProgramAppears,
 } from "./program-presentation.tsx";
 import { RecommendationEnhancement } from "../ai/enhancements.tsx";
 import type { StudentProfile } from "../../types/admissions.ts";
@@ -73,43 +73,44 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
   return (
     <div className="space-y-5">
       <Link href="/matches" className="inline-flex min-h-11 items-center rounded-full px-2 font-semibold text-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">← Back to matches</Link>
-      <article className="rounded-3xl border border-forest-100 bg-white p-6 shadow-[0_18px_60px_rgba(23,52,41,.07)] sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:justify-between">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2"><EligibilityBadge status={recommendation.eligibility} /><SourceState recommendation={recommendation} /></div>
-            <p className="mt-5 font-semibold text-forest-600">{program.universityName}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">{program.programName}</h1>
-            <p className="mt-2 text-muted">{program.degreeLevel ?? "Unknown degree"} · {program.field} · {program.country ?? "Unknown country"}</p>
+      <article className="overflow-hidden rounded-3xl border border-forest-100 bg-white shadow-[0_18px_60px_rgba(23,52,41,.07)]">
+        <header className="border-b border-forest-100 bg-[linear-gradient(135deg,#ffffff_20%,#f0f7f3)] p-6 sm:p-9">
+          <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-forest-600">{program.universityName}</p>
+              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">{program.programName}</h1>
+              <p className="mt-3 text-muted">{program.country ?? "Unknown country"} · {program.degreeLevel ?? "Unknown degree"}</p>
+              <div className="mt-5 flex flex-wrap items-center gap-2"><EligibilityBadge status={recommendation.eligibility} /><SourceState recommendation={recommendation} /></div>
+            </div>
+            <div className="w-full lg:w-72"><ScoreSummary recommendation={recommendation} /></div>
           </div>
-          <div className="w-full lg:w-72"><ScoreSummary recommendation={recommendation} /></div>
-        </div>
+        </header>
 
-        <p className="mt-5 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">Fit Score measures how well this program matches your profile. It is not your probability of admission.</p>
+        <div className="p-6 sm:p-9">
+          <ProfileProgramComparison profile={profile} recommendation={recommendation} />
 
-        <div className="mt-7 grid gap-7 lg:grid-cols-2">
-          <section>
-            <h2 className="text-xl font-semibold text-forest-900">Program facts</h2>
-            <div className="mt-4"><ProgramFacts recommendation={recommendation} /></div>
+          <div className="mt-9 grid gap-8 border-t border-forest-100 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,.7fr)]">
+            <WhyProgramAppears recommendation={recommendation} />
+            <details className="group rounded-2xl bg-forest-50 p-4">
+              <summary className="min-h-11 cursor-pointer list-none py-2 font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">How Fit {recommendation.fitScore} is calculated <span aria-hidden="true" className="float-right group-open:rotate-180">⌄</span></summary>
+              <div className="mt-3"><ScoreBreakdown recommendation={recommendation} /></div>
+            </details>
+          </div>
+
+          <RecommendationEnhancement profile={profile} recommendation={recommendation} />
+
+          <ProgramSources recommendation={recommendation} />
+
+          <section className="mt-8 border-t border-forest-100 pt-8" aria-labelledby="next-step-title">
+            <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Next step</p>
+            <h2 id="next-step-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Turn this match into a plan</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Build a task roadmap from this program’s current requirements and your profile.</p>
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button type="button" onClick={choose} className="min-h-12 rounded-full bg-forest-700 px-6 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">{chosen ? "Open roadmap for this program" : "Build my roadmap for this program"}</button>
+              <button type="button" onClick={toggle} disabled={selected.length === 2 && !isSelected} aria-pressed={isSelected} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">{isSelected ? "Remove from compare" : "Add to compare"}</button>
+              {selected.length === 2 && <Link href="/compare" className="inline-flex min-h-12 items-center justify-center rounded-full px-5 font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Compare selected programs</Link>}
+            </div>
           </section>
-          <section>
-            <h2 className="text-xl font-semibold text-forest-900">Fit details</h2>
-            <div className="mt-4"><ReasonsAndGaps recommendation={recommendation} /></div>
-          </section>
-        </div>
-
-        <RecommendationEnhancement profile={profile} recommendation={recommendation} />
-
-        <section className="mt-7 border-t border-forest-100 pt-7">
-          <h2 className="text-xl font-semibold text-forest-900">Score breakdown</h2>
-          <div className="mt-4"><ScoreBreakdown recommendation={recommendation} /></div>
-        </section>
-
-        <ProgramSources recommendation={recommendation} />
-
-        <div className="mt-7 flex flex-col gap-2 sm:flex-row">
-          <button type="button" onClick={toggle} disabled={selected.length === 2 && !isSelected} aria-pressed={isSelected} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-45">{isSelected ? "Remove from compare" : "Compare"}</button>
-          <button type="button" onClick={choose} className="min-h-12 rounded-full bg-forest-700 px-6 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">{chosen ? "Open roadmap" : "Choose this program"}</button>
-          {selected.length === 2 && <Link href="/compare" className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest-900 px-6 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Compare programs</Link>}
         </div>
       </article>
     </div>

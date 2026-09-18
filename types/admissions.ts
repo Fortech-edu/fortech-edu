@@ -80,10 +80,16 @@ export type Diagnosis = {
   missingInformation: string[];
 };
 
+export type RoadmapPhase = "now" | "prepare" | "apply";
+
 export type RoadmapItem = {
   id: string;
   title: string;
   description: string;
   dueDate: string | null;
   status: "not_started" | "in_progress" | "completed";
+  phase: RoadmapPhase;
+  type: "requirement" | "verification" | "preparation" | "application";
+  officialSourceLabel: string | null;
+  officialSourceUrl: string | null;
 };
