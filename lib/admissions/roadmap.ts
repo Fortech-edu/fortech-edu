@@ -158,12 +158,19 @@ export function generateRoadmap(
     program,
     "verify-documents",
     "Confirm the required application documents",
-    `Review the official admissions page for ${program.programName}. Confirm whether additional materials such as a motivation letter or references are requested before preparing your final package.`,
+    `Review the official admissions page for ${program.programName}. Confirm any document requirements that are not yet verified before preparing your final package.`,
     "prepare",
     "verification",
     admissionsSource,
   ));
-  items.push(task(program, "prepare-documents", "Prepare the verified application materials", "Assemble only the materials confirmed by the program's current official instructions.", "prepare", "preparation", admissionsSource));
+  items.push(task(program, "prepare-documents", `Prepare your ${program.programName} application materials`, "Assemble only the materials confirmed by the program's current official instructions.", "prepare", "preparation", admissionsSource));
+
+  if (program.applicationDocuments?.motivationLetter === true) {
+    items.push(task(program, "prepare-motivation-letter", "Prepare the required motivation letter", `Draft and revise the motivation letter required for ${program.programName}.`, "prepare", "preparation", admissionsSource));
+  }
+  if (program.applicationDocuments?.recommendationLetters === true) {
+    items.push(task(program, "prepare-recommendations", "Prepare the required recommendation letters", `Allow time for the recommendation letters required for ${program.programName}.`, "prepare", "preparation", admissionsSource));
+  }
 
   const deadlineSource = sourceFor(program, "deadline", "admissions", "program");
   const timeline = criteria.get("timeline")!;
@@ -188,6 +195,7 @@ export function generateRoadmap(
 
   const applicationSource = sourceFor(program, "admissions", "program");
   items.push(task(program, "review-application", "Review the official application instructions", `Follow the current application route published for ${program.programName}.`, "apply", "application", applicationSource));
+  items.push(task(program, "finalize-application", `Final review for ${program.programName}`, "Check that your verified documents and application details match the current official instructions before submission.", "apply", "preparation", applicationSource));
   items.push(task(program, "submit-application", "Submit through the official application route", program.deadline === null ? "Submit only after confirming the deadline, required materials, and official instructions." : `Submit the verified application package by the published deadline of ${program.deadline}.`, "apply", "application", applicationSource, program.deadline));
 
   return items;
