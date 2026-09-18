@@ -205,8 +205,8 @@ export function OnboardingForm() {
 function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile | null; initialTarget: UniversityProgram | null }) {
   const router = useRouter();
   const [profile, setProfile] = useState<StudentProfile>(() => {
-    const base = initial?.profile ?? emptyProfile;
-    return initialTarget ? applyTargetProfileDefaults(base, initialTarget) : base;
+    if (initial) return initial.profile;
+    return initialTarget ? applyTargetProfileDefaults(emptyProfile, initialTarget) : emptyProfile;
   });
   const [instantProfile, setInstantProfile] = useState<StudentProfile>({
     ...emptyProfile,
@@ -216,6 +216,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
     satScore: initial?.profile.satScore ?? null,
   });
   const [target, setTarget] = useState<UniversityProgram | null>(initialTarget);
+  const lastTargetRef = useRef<UniversityProgram | null>(initialTarget);
   const [entryStage, setEntryStage] = useState<OnboardingFlowStage>(initial?.flowStage ?? "target");
   const [step, setStep] = useState(initial?.step ?? 1);
   const [completed, setCompleted] = useState(initial?.completed ?? false);
@@ -342,7 +343,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
     }
     if (entryStage === "diagnosis") {
       const transferred = transferInstantProfile(profile, instantProfile);
-      const withDefaults = applyTargetProfileDefaults(transferred, target);
+      const withDefaults = applyTargetProfileDefaults(transferred, target, lastTargetRef.current);
       setProfile(withDefaults);
       setEntryStage("onboarding");
       setStep(3);
@@ -492,7 +493,22 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
               </div>
             ) : null}
 
-            {entryStage === "target" ? <TargetStep selected={target} attempted={attemptedTarget} onSelect={(program) => { setTarget(program); setAttemptedTarget(false); saveSelectedProgram(program?.id ?? null); if (program) setProfile((current) => applyTargetProfileDefaults(current, program)); }} /> : null}
+            {entryStage === "target" ? (
+              <TargetStep
+                selected={target}
+                attempted={attemptedTarget}
+                onSelect={(program) => {
+                  const previous = lastTargetRef.current;
+                  setTarget(program);
+                  setAttemptedTarget(false);
+                  saveSelectedProgram(program?.id ?? null);
+                  if (program) {
+                    lastTargetRef.current = program;
+                    setProfile((current) => applyTargetProfileDefaults(current, program, previous));
+                  }
+                }}
+              />
+            ) : null}
 
             {entryStage === "current" ? <InstantCurrentState profile={instantProfile} errors={instantErrors} onUpdate={(key, value) => setInstantProfile((current) => ({ ...current, [key]: value }))} /> : null}
 
@@ -570,11 +586,13 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <input id="sat" className={inputClass} type="number" min="400" max="1600" step="10" inputMode="numeric" placeholder="1200" value={profile.satScore ?? ""} onChange={(event) => update("satScore", numberOrNull(event.target.value))} aria-describedby={`sat-help${errors.satScore ? " sat-error" : ""}`} aria-invalid={Boolean(errors.satScore)} />
                   <ErrorText id="sat-error">{errors.satScore}</ErrorText>
                 </FieldCard>
-                <FieldCard>
-                  <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
-                  <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
-                  <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
-                </FieldCard>
+                {!isTargetJourney ? (
+                  <FieldCard>
+                    <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
+                    <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
+                    <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
+                  </FieldCard>
+                ) : null}
               </>
             ) : null}
 
@@ -673,11 +691,13 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <ErrorText id="budget-error">{errors.annualBudget}</ErrorText>
                 </FieldCard>
 
-                <FieldCard>
-                  <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
-                  <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
-                  <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
-                </FieldCard>
+                {isTargetJourney ? (
+                  <FieldCard>
+                    <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
+                    <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
+                    <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
+                  </FieldCard>
+                ) : null}
               </>
             ) : null}
 

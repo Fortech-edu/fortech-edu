@@ -81,6 +81,7 @@ export function inferFieldFromTarget(field: string | null | undefined): string |
 export function applyTargetProfileDefaults(
   profile: StudentProfile,
   target: UniversityProgram | null | undefined,
+  previousTarget?: UniversityProgram | null,
 ): StudentProfile {
   if (!target) return profile;
 
@@ -88,9 +89,16 @@ export function applyTargetProfileDefaults(
     profile.targetDegree ??
     (target.degreeLevel?.toLowerCase().startsWith("bachelor") ? "Bachelor" : profile.targetDegree);
 
-  const intendedField =
-    profile.intendedField ??
-    inferFieldFromTarget(target.field);
+  const targetField = inferFieldFromTarget(target.field);
+  const previousField = previousTarget ? inferFieldFromTarget(previousTarget.field) : null;
+
+  const isTargetDerived =
+    profile.intendedField === null ||
+    (previousField !== null && profile.intendedField === previousField);
+
+  const intendedField = isTargetDerived
+    ? (targetField ?? profile.intendedField)
+    : profile.intendedField;
 
   return {
     ...profile,
