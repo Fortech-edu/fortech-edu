@@ -7,9 +7,10 @@ import { assessProgram } from "../../lib/admissions/recommend.ts";
 import {
   generateRoadmap,
   getNextAction,
+  getPrioritizedRoadmapItems,
   getRoadmapProgress,
   hasStrongProfileState,
-  roadmapPhases,
+  roadmapHorizons,
 } from "../../lib/admissions/roadmap.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadStoredProfile } from "../../lib/storage/profile.ts";
@@ -20,8 +21,27 @@ import {
 } from "../../lib/storage/progress.ts";
 import { loadSelectedProgram } from "../../lib/storage/selection.ts";
 import { loadJourneyUpdatedAt } from "../../lib/storage/sync-events.ts";
-import type { Recommendation, RoadmapItem } from "../../types/admissions.ts";
+import type { Recommendation, RoadmapHorizon, RoadmapItem, RoadmapPriority } from "../../types/admissions.ts";
 import { EligibilityBadge } from "../matches/program-presentation.tsx";
+
+const priorityStyles: Record<RoadmapPriority, string> = {
+  high: "bg-amber-100 text-amber-900",
+  medium: "bg-forest-50 text-forest-700",
+  low: "bg-slate-100 text-slate-600",
+};
+
+const priorityLabels: Record<RoadmapPriority, string> = {
+  high: "High priority",
+  medium: "Medium priority",
+  low: "Low priority",
+};
+
+const emptyHorizonCopy: Record<RoadmapHorizon, string> = {
+  now: "No confirmed requirement gap needs immediate action for this program.",
+  next_30_days: "No program requirement currently needs verification.",
+  this_semester: "No preparation task belongs in this horizon yet.",
+  before_application: "No application step belongs in this horizon yet.",
+};
 
 export function RoadmapView() {
   const ready = useClientReady();
@@ -54,6 +74,7 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
   const progress = getRoadmapProgress(items, completedIds);
   const nextAction = getNextAction(items, completedIds);
   const knownComparableRequirementsMet = hasStrongProfileState(items);
+  const orderedItems = getPrioritizedRoadmapItems(items);
 
   function toggle(taskId: string) {
     const next = toggleCompletedTask(completedIds, taskId);
@@ -85,6 +106,12 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
             <div className="mt-4">
               <h2 id="next-action-title" className="text-2xl font-semibold tracking-tight sm:text-3xl">{nextAction.title}</h2>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-forest-100 sm:text-base sm:leading-7">{nextAction.description}</p>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-forest-100"><span className="font-semibold text-white">Why now: </span>{nextAction.reason}</p>
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wide text-white">{nextAction.relatedRequirement}</span>
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${nextAction.priority === "high" ? "bg-amber-200 text-amber-950" : "bg-white/15 text-white"}`}>{priorityLabels[nextAction.priority]}</span>
+                {nextAction.dueDate ? <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">Published deadline: {nextAction.dueDate}</span> : null}
+              </div>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button type="button" onClick={() => toggle(nextAction.id)} className="min-h-12 rounded-full bg-white px-6 font-semibold text-forest-900 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Mark this step complete</button>
                 {nextAction.officialSourceUrl ? <OfficialSourceLink item={nextAction} inverted /> : null}
@@ -119,20 +146,20 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
       <section className="pt-3" aria-labelledby="roadmap-title">
         <div className="px-1">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-forest-600">Program-specific roadmap</p>
-          <h2 id="roadmap-title" className="mt-2 text-2xl font-semibold text-forest-900 sm:text-3xl">What to do next</h2>
+          <h2 id="roadmap-title" className="mt-2 text-2xl font-semibold text-forest-900 sm:text-3xl">What to do, and when</h2>
         </div>
         <div className="mt-8 space-y-10">
-          {roadmapPhases.map((phase) => {
-            const phaseItems = items.filter((item) => item.phase === phase.id);
+          {roadmapHorizons.map((horizon) => {
+            const horizonItems = orderedItems.filter((item) => item.horizon === horizon.id);
             return (
-              <section key={phase.id} className="roadmap-phase overflow-hidden" aria-labelledby={`phase-${phase.id}`}>
+              <section key={horizon.id} className="roadmap-phase overflow-hidden" aria-labelledby={`horizon-${horizon.id}`}>
                 <header className="border-b border-forest-100 px-5 py-6 sm:px-7">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-600">{phase.label}</p>
-                  <h3 id={`phase-${phase.id}`} className="mt-1 text-xl font-semibold text-forest-900">{phase.description}</h3>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-600">{horizon.label}</p>
+                  <h3 id={`horizon-${horizon.id}`} className="mt-1 text-xl font-semibold text-forest-900">{horizon.description}</h3>
                 </header>
-                {phaseItems.length ? (
+                {horizonItems.length ? (
                   <ol className="divide-y divide-forest-100">
-                    {phaseItems.map((item) => {
+                    {horizonItems.map((item) => {
                       const completed = completedIds.includes(item.id);
                       const descriptionId = `${item.id}-description`;
                       return (
@@ -142,11 +169,13 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
                           </label>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{completed ? "Completed" : item.type}</p>
+                              <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{completed ? "Completed" : item.relatedRequirement}</p>
+                              <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${priorityStyles[item.priority]}`}>{priorityLabels[item.priority]}</span>
                               {item.dueDate ? <span className="rounded-full bg-sand-100 px-2.5 py-1 text-xs font-semibold text-amber-900">Published deadline: {item.dueDate}</span> : null}
                             </div>
                             <h4 className={`mt-2 break-words text-lg font-semibold ${completed ? "text-forest-700 line-through decoration-forest-300" : "text-forest-900"}`}>{item.title}</h4>
                             <p id={descriptionId} className="mt-2 max-w-3xl text-sm leading-6 text-muted">{item.description}</p>
+                            <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/80"><span className="font-semibold text-forest-700">Why it matters: </span>{item.reason}</p>
                             {item.officialSourceUrl ? <div className="mt-3"><OfficialSourceLink item={item} /></div> : null}
                           </div>
                         </li>
@@ -154,7 +183,7 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
                     })}
                   </ol>
                 ) : (
-                  <p className="px-5 py-6 text-sm leading-6 text-muted sm:px-7">No current requirement-gap action belongs in this phase. Continue with the supported preparation steps below.</p>
+                  <p className="px-5 py-6 text-sm leading-6 text-muted sm:px-7">{emptyHorizonCopy[horizon.id]}</p>
                 )}
               </section>
             );

@@ -7,10 +7,12 @@ import type { RoadmapItem, StudentProfile, UniversityProgram } from "../../types
 import {
   generateRoadmap,
   getNextAction,
+  getPrioritizedRoadmapItems,
   getRoadmapProgress,
   hasStrongProfileState,
-  roadmapPhases,
+  roadmapHorizons,
 } from "./roadmap.ts";
+import { assessProgram } from "./recommend.ts";
 
 const profile: StudentProfile = {
   fullName: "Demo Student",
@@ -34,8 +36,8 @@ const productionById = (id: string) => programs.find((program) => program.id ===
 const ids = (items: RoadmapItem[]) => items.map(({ id }) => id);
 const text = (items: RoadmapItem[]) => items.map(({ title, description }) => `${title} ${description}`).join(" ");
 
-test("roadmap phases are a stable NOW, PREPARE, APPLY sequence", () => {
-  assert.deepEqual(roadmapPhases.map(({ id }) => id), ["now", "prepare", "apply"]);
+test("roadmap horizons are a stable NOW, NEXT 30 DAYS, THIS SEMESTER, BEFORE APPLICATION sequence", () => {
+  assert.deepEqual(roadmapHorizons.map(({ id }) => id), ["now", "next_30_days", "this_semester", "before_application"]);
 });
 
 test("a strong profile has no fake requirement gaps and still has useful actions", () => {
@@ -220,6 +222,166 @@ test("source-less programs keep source metadata empty", () => {
 test("roadmap copy avoids misleading admissions claims", () => {
   const items = programs.flatMap((program) => generateRoadmap(profile, program));
   assert.doesNotMatch(text(items), /guaranteed|admission chance|you will be admitted|scholarship available|\bsafe\b|\breach\b/i);
+  assert.doesNotMatch(items.map(({ reason }) => reason).join(" "), /guaranteed|admission chance|you will be admitted|scholarship|probability|chance of/i);
+});
+
+test("confirmed GPA gaps receive high-priority NOW actions", () => {
+  const items = generateRoadmap({ ...profile, gpa: 3 }, byId("northbridge-cs"));
+  const item = items.find(({ id }) => id.endsWith(":improve-academics"))!;
+
+  assert.ok(item);
+  assert.equal(item.priority, "high");
+  assert.equal(item.horizon, "now");
+  assert.equal(item.relatedRequirement, "Academic requirement");
+  assert.match(item.reason, /GPA is below the directly comparable published minimum/);
+});
+
+test("confirmed IELTS gaps are prioritized above verification and preparation work", () => {
+  const program = byId("northbridge-cs");
+  const items = generateRoadmap(profile, program);
+  const prioritized = getPrioritizedRoadmapItems(items);
+  const priorities = items.map(({ priority }) => priority);
+
+  assert.equal(items.find(({ id }) => id.endsWith(":prepare-ielts"))!.priority, "high");
+  assert.equal(items.find(({ id }) => id.endsWith(":take-ielts"))!.priority, "high");
+  assert.equal(prioritized[0].id, "northbridge-cs:prepare-ielts");
+  assert.equal(items.indexOf(prioritized[0]) < items.indexOf(prioritized.find(({ priority }) => priority !== "high")!), true);
+  assert.ok(priorities.includes("medium") && priorities.includes("high"));
+});
+
+test("a missing student score stays medium priority instead of becoming a confirmed gap", () => {
+  const items = generateRoadmap({ ...profile, ieltsScore: null }, byId("northbridge-cs"));
+  const item = items.find(({ id }) => id.endsWith(":prepare-ielts"))!;
+
+  assert.equal(item.priority, "medium");
+  assert.equal(item.horizon, "now");
+  assert.match(item.description, /No IELTS score is recorded/);
+  assert.match(item.reason, /no score is recorded/);
+  assert.doesNotMatch(item.reason, /below/);
+});
+
+test("tasks map to deterministic time horizons without fabricated dates", () => {
+  const items = generateRoadmap(profile, byId("northbridge-cs"));
+  const horizonOf = (suffix: string) => items.find(({ id }) => id.endsWith(suffix))!.horizon;
+
+  assert.equal(horizonOf(":prepare-ielts"), "now");
+  assert.equal(horizonOf(":verify-documents"), "this_semester");
+  assert.equal(horizonOf(":prepare-documents"), "this_semester");
+  assert.equal(horizonOf(":review-deadline"), "before_application");
+  assert.equal(horizonOf(":review-application"), "before_application");
+
+  const unknownAcademic = generateRoadmap(profile, byId("meridian-it"));
+  assert.equal(unknownAcademic.find(({ id }) => id.endsWith(":verify-academic"))!.horizon, "next_30_days");
+
+  const secondRun = generateRoadmap(profile, byId("northbridge-cs"));
+  assert.deepEqual(secondRun.map(({ id, horizon }) => [id, horizon]), items.map(({ id, horizon }) => [id, horizon]));
+});
+
+test("a strong profile has no high-priority urgency and an empty NOW horizon", () => {
+  const program = productionById("asu-data-science");
+  const items = generateRoadmap({ ...profile, intendedField: "Data Science", gpa: 3.5, ieltsScore: 7 }, program);
+
+  assert.equal(items.every(({ priority }) => priority !== "high"), true);
+  assert.equal(items.some(({ horizon }) => horizon === "now"), false);
+  assert.equal(items.length >= 6, true);
+  assert.equal(hasStrongProfileState(items), true);
+});
+
+test("a selected target outside ranked matches still produces a full roadmap", () => {
+  const program = byId("northbridge-cs");
+  const struggling = { ...profile, gpa: 2, ieltsScore: 5.5 };
+  const recommendation = assessProgram(struggling, program);
+
+  assert.equal(recommendation.eligibility, "not_eligible");
+
+  const items = generateRoadmap(struggling, program);
+  const academics = items.find(({ id }) => id.endsWith(":improve-academics"))!;
+
+  assert.equal(academics.priority, "high");
+  assert.equal(academics.horizon, "now");
+  assert.equal(items.length >= 6, true);
+  assert.equal(items.some(({ id }) => id.endsWith(":submit-application")), true);
+});
+
+test("next action follows priority first and roadmap order on ties", () => {
+  const program = byId("northbridge-cs");
+  const items = generateRoadmap(profile, program);
+
+  assert.equal(getNextAction(items, [])?.id, "northbridge-cs:prepare-ielts");
+  assert.equal(getNextAction(items, ["northbridge-cs:prepare-ielts"])?.id, "northbridge-cs:take-ielts");
+
+  const highDone = ["northbridge-cs:prepare-ielts", "northbridge-cs:take-ielts"];
+  assert.equal(getNextAction(items, highDone)?.priority, "medium");
+
+  const doubleGap = generateRoadmap({ ...profile, gpa: 3 }, program);
+  assert.equal(getNextAction(doubleGap, [])?.id, "northbridge-cs:improve-academics");
+});
+
+test("a fully completed roadmap produces a truthful completion state", () => {
+  const program = byId("northbridge-cs");
+  const items = generateRoadmap(profile, program);
+  const allIds = items.map(({ id }) => id);
+
+  assert.equal(getNextAction(items, allIds), null);
+  assert.deepEqual(getRoadmapProgress(items, allIds), { completed: items.length, total: items.length, percentage: 100 });
+});
+
+test("reasons and related requirements are deterministic and traceable", () => {
+  const run = (profileOverride: Partial<StudentProfile> = {}) =>
+    generateRoadmap({ ...profile, ...profileOverride }, byId("northbridge-cs"))
+      .map(({ id, priority, reason, relatedRequirement, horizon }) => ({ id, priority, reason, relatedRequirement, horizon }));
+
+  const first = run();
+  const second = run();
+  assert.deepEqual(first, second);
+  assert.ok(first.every(({ reason, relatedRequirement }) => reason.length > 0 && relatedRequirement.length > 0));
+
+  const bySuffix = (items: ReturnType<typeof run>, suffix: string) => items.find(({ id }) => id.endsWith(suffix))!;
+  assert.equal(bySuffix(first, ":prepare-ielts").relatedRequirement, "IELTS");
+  assert.equal(bySuffix(first, ":verify-documents").relatedRequirement, "Application documents");
+  assert.equal(bySuffix(first, ":review-application").relatedRequirement, "Application instructions");
+  assert.equal(bySuffix(first, ":review-application").priority, "low");
+  assert.equal(bySuffix(first, ":review-deadline").relatedRequirement, "Application deadline");
+});
+
+test("budget and tuition tasks stay factual about money", () => {
+  const overBudget = generateRoadmap(profile, { ...byId("northbridge-cs"), tuition: 28000 });
+  const plan = overBudget.find(({ id }) => id.endsWith(":plan-budget"))!;
+  assert.equal(plan.relatedRequirement, "Tuition / budget");
+  assert.equal(plan.priority, "medium");
+  assert.match(plan.reason, /published tuition is above the annual budget/);
+
+  const crossCurrency = generateRoadmap(profile, productionById("lut-software-systems-engineering"));
+  const review = crossCurrency.find(({ id }) => id.endsWith(":review-tuition"))!;
+  assert.equal(review.priority, "low");
+  assert.match(review.reason, /cannot be compared with your budget/);
+});
+
+test("known deadlines stay published without countdowns and unknown deadlines stay verification", () => {
+  const known = generateRoadmap(profile, byId("northbridge-cs")).find(({ id }) => id.endsWith(":review-deadline"))!;
+  assert.equal(known.dueDate, "2027-02-01");
+  assert.match(known.description, /2027-02-01/);
+  assert.doesNotMatch(`${known.title} ${known.description} ${known.reason}`, /days remaining|countdown|time left|in \d+ days/i);
+
+  const unknown = generateRoadmap(profile, { ...byId("northbridge-cs"), deadline: null }).find(({ id }) => id.endsWith(":verify-deadline"))!;
+  assert.equal(unknown.priority, "medium");
+  assert.equal(unknown.relatedRequirement, "Application deadline");
+  assert.match(unknown.reason, /has not provided a verified deadline/);
+  assert.equal(unknown.dueDate, null);
+});
+
+test("activities only change contextual preparation wording, never priority, horizon, or IDs", () => {
+  const program = byId("northbridge-cs");
+  const withoutActivities = generateRoadmap(profile, program);
+  const withActivities = generateRoadmap({ ...profile, activitiesAndAchievements: "Volunteer tutor and coding project" }, program);
+
+  assert.deepEqual(withActivities.map(({ id }) => id), withoutActivities.map(({ id }) => id));
+  const plain = withoutActivities.find(({ id }) => id.endsWith(":prepare-documents"))!;
+  const contextual = withActivities.find(({ id }) => id.endsWith(":prepare-documents"))!;
+  assert.match(contextual.reason, /Activities are available/);
+  assert.doesNotMatch(plain.reason, /Activities are available/);
+  assert.equal(contextual.priority, plain.priority);
+  assert.equal(contextual.horizon, plain.horizon);
 });
 
 test("the same inputs produce the same ordered stable task IDs", () => {
@@ -252,19 +414,24 @@ test("profile edits regenerate and remove resolved IELTS actions", () => {
   assert.equal(after.some(({ id }) => id.endsWith(":verify-documents")), true);
 });
 
-test("roadmap UI exposes identity, eligibility, phases, sources, and recovery states", () => {
+test("roadmap UI exposes identity, eligibility, horizons, priorities, reasons, sources, and recovery states", () => {
   const source = readFileSync(new URL("../../components/journey/roadmap-view.tsx", import.meta.url), "utf8");
   assert.ok(source.includes("Your path to this program"));
   assert.ok(source.includes("program.universityName"));
   assert.ok(source.includes("program.programName"));
   assert.ok(source.includes("EligibilityBadge"));
   assert.ok(source.includes("Next action"));
+  assert.ok(source.includes("Why now: "));
+  assert.ok(source.includes("Why it matters: "));
+  assert.ok(source.includes("priorityLabels"));
+  assert.ok(source.includes("roadmapHorizons"));
   assert.ok(source.includes("OfficialSourceLink"));
   assert.ok(source.includes('type="checkbox"'));
   assert.ok(source.includes("Build your profile first"));
   assert.ok(source.includes("Choose a program first"));
   assert.ok(source.includes("Selected program is no longer available"));
   assert.ok(source.includes("published comparable requirements we can verify"));
+  assert.ok(source.includes("Current roadmap complete"));
   assert.doesNotMatch(source, /guaranteed admission|will be admitted/i);
   assert.equal(source.includes("aria-live"), false);
 });
