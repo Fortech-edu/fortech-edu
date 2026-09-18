@@ -8,9 +8,10 @@ When a fact is null or unknown, say it is unknown or needs verification.
 Use "needs verification" for unknown program facts, and do not introduce numeric counts or reformat supplied numbers.
 Return only the requested short JSON object with no markdown or extra keys.`;
 
-export const diagnosisPrompt = `Rewrite the deterministic profile diagnosis in calm, concise language.
+export const diagnosisPrompt = `Explain the deterministic diagnosis for the selected university and program in calm, concise language.
 Return {"summary": string, "focus": string[]}.
-The focus array may contain at most two priorities drawn only from deterministic gaps. Do not add new tasks or facts.${FACT_RULES}`;
+State the biggest confirmed gap when one is supplied. Keep verification items explicitly uncertain. Use only the supplied deterministic next action.
+The focus array may contain at most two items drawn only from nextAction and verificationItems. Do not add new tasks or facts.${FACT_RULES}`;
 
 export const recommendationPrompt = `Explain why the supplied program matches the supplied profile.
 Return {"summary": string, "whyItFits": string[], "watchOutFor": string[]}.

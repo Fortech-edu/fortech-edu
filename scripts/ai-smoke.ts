@@ -1,8 +1,8 @@
 import { programs } from "../data/programs.ts";
-import { diagnoseProfile } from "../lib/admissions/diagnosis.ts";
+import { diagnoseTarget } from "../lib/admissions/diagnosis.ts";
 import { assessProgram } from "../lib/admissions/recommend.ts";
 import { getConfiguredProvider, type AIProvider } from "../lib/ai/provider.ts";
-import { toAIProfile } from "../lib/ai/schemas.ts";
+import { toAIProfile, toDiagnosisAIInput } from "../lib/ai/schemas.ts";
 import { createAIService } from "../lib/ai/service.ts";
 import type { StudentProfile } from "../types/admissions.ts";
 
@@ -36,12 +36,10 @@ const profile: StudentProfile = {
 const aiProfile = toAIProfile(profile);
 const program = programs[0];
 const assessed = assessProgram(profile, program);
+const targetDiagnosis = diagnoseTarget(profile, program)!;
 const service = createAIService(provider, { timeoutMs: 30_000 });
 
-const diagnosis = await service.generateDiagnosis({
-  profile: aiProfile,
-  deterministicDiagnosis: diagnoseProfile(profile),
-});
+const diagnosis = await service.generateDiagnosis(toDiagnosisAIInput(profile, program, targetDiagnosis));
 const explanation = await service.generateRecommendationExplanation({
   profile: aiProfile,
   programFacts: program,

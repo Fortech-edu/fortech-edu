@@ -9,26 +9,33 @@ import {
 } from "../../lib/ai/diagnosis-presentation.ts";
 import {
   toAIProfile,
+  toDiagnosisAIInput,
   validateRecommendationOutput,
 } from "../../lib/ai/schemas.ts";
 import type { DiagnosisAIOutput, RecommendationAIOutput } from "../../lib/ai/schemas.ts";
 import type { AIResult } from "../../lib/ai/service.ts";
-import type { Diagnosis, Recommendation, StudentProfile } from "../../types/admissions.ts";
+import type { Recommendation, StudentProfile, UniversityProgram } from "../../types/admissions.ts";
+import type { TargetDiagnosis } from "../../lib/admissions/diagnosis.ts";
 
 const pendingRequests = new Map<string, Promise<unknown>>();
 
-export function DiagnosisEnhancement({ profile, diagnosis }: { profile: StudentProfile; diagnosis: Diagnosis }) {
+export function DiagnosisEnhancement({
+  profile,
+  program,
+  diagnosis,
+}: {
+  profile: StudentProfile;
+  program: UniversityProgram;
+  diagnosis: TargetDiagnosis;
+}) {
   const aiProfile = toAIProfile(profile);
   const [result, setResult] = useState<AIResult<DiagnosisAIOutput> | null>(null);
-  const requestBody = JSON.stringify({ profile: aiProfile });
+  const requestBody = JSON.stringify({ profile: aiProfile, programId: program.id });
   const cacheKey = createAIResultCacheKey("diagnosis", requestBody);
 
   useEffect(() => {
     let active = true;
-    const currentInput = {
-      profile: toAIProfile(profile),
-      deterministicDiagnosis: diagnosis,
-    };
+    const currentInput = toDiagnosisAIInput(profile, program, diagnosis);
     const fallback: AIResult<DiagnosisAIOutput> = {
       content: diagnosisFallback(currentInput),
       source: "fallback",
@@ -41,18 +48,23 @@ export function DiagnosisEnhancement({ profile, diagnosis }: { profile: StudentP
     return () => {
       active = false;
     };
-  }, [cacheKey, diagnosis, profile, requestBody]);
+  }, [cacheKey, diagnosis, profile, program, requestBody]);
 
   const copy = diagnosisExplanationCopy(result?.source ?? null);
 
   return (
     <section className="accent-section p-5 sm:p-7" aria-labelledby="diagnosis-explanation-title">
-      <div className="flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-forest-700 shadow-sm" aria-hidden="true">✦</span>
-        <div>
-          <h2 id="diagnosis-explanation-title" className="text-lg font-semibold text-forest-900">{copy.title}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">{copy.disclosure}</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-forest-700 shadow-sm" aria-hidden="true">✦</span>
+          <div>
+            <h2 id="diagnosis-explanation-title" className="text-lg font-semibold text-forest-900">{copy.title}</h2>
+            <p className="mt-1 text-sm leading-6 text-muted">{copy.disclosure}</p>
+          </div>
         </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-forest-700">
+          {result === null ? "Preparing explanation…" : result.source === "ai" ? "AI-assisted" : "Deterministic explanation"}
+        </span>
       </div>
 
       <div className="mt-5 min-h-28" aria-live="polite" aria-atomic="true">
@@ -64,9 +76,9 @@ export function DiagnosisEnhancement({ profile, diagnosis }: { profile: StudentP
         ) : (
           <>
             <p className="max-w-3xl leading-7 text-ink">{result.content.summary}</p>
-            {result.source === "ai" && result.content.focus.length > 0 ? (
+            {result.content.focus.length > 0 ? (
               <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">AI focus</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">What to focus on</p>
                 <ul className="mt-2 space-y-2 text-sm leading-6 text-ink">
                   {result.content.focus.map((item) => <li key={item} className="flex gap-2"><span aria-hidden="true">→</span><span>{item}</span></li>)}
                 </ul>
@@ -77,7 +89,7 @@ export function DiagnosisEnhancement({ profile, diagnosis }: { profile: StudentP
       </div>
 
       <p className="border-t border-sand-300 pt-4 text-xs leading-5 text-muted">
-        AI explains this analysis. It does not calculate Fit Score or eligibility and cannot change deterministic results.
+        The explanation cannot change requirements, eligibility, Fit Score, or the roadmap.
       </p>
     </section>
   );

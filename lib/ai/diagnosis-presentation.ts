@@ -24,18 +24,18 @@ export function parseDiagnosisResult(
 export function diagnosisExplanationCopy(source: "ai" | "fallback" | null) {
   if (source === "ai") {
     return {
-      title: "AI-assisted explanation",
-      disclosure: "Based only on your profile and verified information available to the system.",
+      title: "What this means for your target",
+      disclosure: "AI explains the deterministic diagnosis and cannot change admissions facts.",
     };
   }
   if (source === "fallback") {
     return {
-      title: "Profile explanation",
-      disclosure: "AI is temporarily unavailable. Your deterministic results are unchanged.",
+      title: "What this means for your target",
+      disclosure: "AI explanation is unavailable; the admissions analysis itself is unchanged.",
     };
   }
   return {
-    title: "AI-assisted explanation",
+    title: "What this means for your target",
     disclosure: "Creating a concise explanation while your deterministic analysis stays available.",
   };
 }
