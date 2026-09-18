@@ -52,7 +52,11 @@ export type RoadmapTaskAIInput = {
 
 export type DiagnosisAIOutput = {
   summary: string;
-  focus: string[];
+  strengths: string[];
+  uncertainties: string[];
+  priority: string;
+  nextSteps: string[];
+  advisorNote: string;
 };
 
 export type RecommendationAIOutput = {
@@ -161,9 +165,26 @@ export function toStudentProfile(profile: AIProfile): StudentProfile {
 }
 
 export function validateDiagnosisOutput(value: unknown): DiagnosisAIOutput | null {
-  if (!isRecord(value) || !hasExactKeys(value, ["summary", "focus"])) return null;
-  return isShortText(value.summary) && isShortTextArray(value.focus, 2)
-    ? { summary: value.summary, focus: value.focus }
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ["summary", "strengths", "uncertainties", "priority", "nextSteps", "advisorNote"])
+  ) {
+    return null;
+  }
+  return isShortText(value.summary) &&
+    isShortTextArray(value.strengths, 3) &&
+    isShortTextArray(value.uncertainties, 3) &&
+    isShortText(value.priority) &&
+    isShortTextArray(value.nextSteps, 3) &&
+    isShortText(value.advisorNote)
+    ? {
+        summary: value.summary,
+        strengths: value.strengths,
+        uncertainties: value.uncertainties,
+        priority: value.priority,
+        nextSteps: value.nextSteps,
+        advisorNote: value.advisorNote,
+      }
     : null;
 }
 
