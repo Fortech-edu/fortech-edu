@@ -478,6 +478,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
 
                 <ReviewSection title="Preferences" step={3} onEdit={edit}>
                   <p className="font-semibold text-ink">{profile.preferredCountries.join(" · ") || "Countries not selected"}</p>
+                  <p className="mt-2 text-sm text-ink">Preferred language: {display(profile.preferredLanguage, "No language preference")}</p>
                   <p className="mt-2 text-sm text-ink">{budgetLabel(profile)}</p>
                   <p className="mt-1 text-sm text-ink">{display(profile.targetIntake, "Intake not selected")}</p>
                 </ReviewSection>
