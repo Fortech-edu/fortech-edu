@@ -25,6 +25,7 @@ const profile: StudentProfile = {
   targetDegree: "Bachelor",
   intendedField: "Computer Science",
   preferredCountries: ["Kazakhstan"],
+  preferredLanguage: null,
   targetIntake: "Fall 2027",
   gpa: 3.6,
   ieltsScore: 6.5,

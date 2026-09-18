@@ -3,7 +3,7 @@ import test from "node:test";
 import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 import { evaluateEligibility } from "./eligibility.ts";
-import { recommendPrograms } from "./recommend.ts";
+import { assessProgram, recommendPrograms } from "./recommend.ts";
 import { calculateFit, fieldsMatch } from "./scoring.ts";
 
 const profile: StudentProfile = {
@@ -14,6 +14,7 @@ const profile: StudentProfile = {
   targetDegree: "Bachelor",
   intendedField: "Computer Science",
   preferredCountries: ["Canada"],
+  preferredLanguage: null,
   targetIntake: "Fall 2027",
   gpa: 3.4,
   ieltsScore: 6.5,
@@ -228,6 +229,19 @@ test("IELTS changes its fit component and eligibility without changing other com
   assert.ok(below.fitScore < meeting.fitScore);
   assert.ok(belowLanguage! < meetingLanguage!);
   assert.deepEqual(belowOther, meetingOther);
+});
+
+test("language preference is transparent evidence, not an eligibility or score penalty", () => {
+  const known = { ...byId("northbridge-cs"), languageOfInstruction: "English" };
+  const unknown = { ...known, languageOfInstruction: null };
+  const preferred = { ...profile, preferredLanguage: "English" };
+  const different = { ...preferred, preferredLanguage: "Finnish" };
+
+  assert.equal(calculateFit(preferred, known).fitScore, calculateFit(profile, known).fitScore);
+  assert.equal(calculateFit(preferred, unknown).fitScore, calculateFit(profile, unknown).fitScore);
+  assert.ok(assessProgram(preferred, known).reasons.includes("Taught in your preferred language"));
+  assert.ok(assessProgram(different, known).gaps.includes("Program is taught in English; your preference is Finnish"));
+  assert.ok(assessProgram(preferred, unknown).gaps.includes("Language of instruction needs verification"));
 });
 
 test("the same inputs always return the same recommendations", () => {

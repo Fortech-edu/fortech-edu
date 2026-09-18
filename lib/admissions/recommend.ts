@@ -80,6 +80,16 @@ function explain(profile: StudentProfile, program: UniversityProgram) {
     gaps,
   );
 
+  if (profile.preferredLanguage) {
+    if (program.languageOfInstruction === null) {
+      gaps.push("Language of instruction needs verification");
+    } else if (profile.preferredLanguage.toLowerCase() === program.languageOfInstruction.toLowerCase()) {
+      reasons.push("Taught in your preferred language");
+    } else {
+      gaps.push(`Program is taught in ${program.languageOfInstruction}; your preference is ${profile.preferredLanguage}`);
+    }
+  }
+
   if (
     profile.annualBudget === null ||
     profile.budgetCurrency === null ||

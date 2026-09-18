@@ -3,6 +3,7 @@ import type { EligibilityStatus, Recommendation, StudentProfile } from "../../ty
 import {
   buildProfileProgramCriteria,
   eligibilityLabels,
+  formatLanguageOfInstruction,
   formatRequirement,
   formatScoreComponent,
   formatTuition,
@@ -72,6 +73,7 @@ export function ProgramFacts({ recommendation }: { recommendation: Recommendatio
     ["Country", program.country ?? "Unknown"],
     ["City", program.city ?? "Unknown"],
     ["Field", program.field || "Unknown"],
+    ["Language of instruction", formatLanguageOfInstruction(program)],
     ["Tuition", formatTuition(program)],
     ["IELTS", formatRequirement(program.ieltsRequirement)],
     ["SAT", formatRequirement(program.satRequirement)],

@@ -42,6 +42,10 @@ export function formatTuition(program: UniversityProgram) {
   return program.tuitionPeriod ? `${amount} / ${program.tuitionPeriod}` : amount;
 }
 
+export function formatLanguageOfInstruction(program: UniversityProgram) {
+  return program.languageOfInstruction ?? "Unknown";
+}
+
 export function formatScoreComponent(value: number | null) {
   return value === null ? "Unknown" : `${value} points`;
 }
@@ -66,7 +70,7 @@ export type ComparisonStatus =
   | "Not comparable";
 
 export type ProfileProgramCriterion = {
-  key: "field" | "academic" | "ielts" | "sat" | "tuition" | "timeline";
+  key: "field" | "academic" | "ielts" | "sat" | "languageOfInstruction" | "tuition" | "timeline";
   label: string;
   profileValue: string;
   programValue: string;
@@ -147,6 +151,15 @@ export function buildProfileProgramCriteria(
   const ielts = requirementCriterion("ielts", "IELTS", profile.ieltsScore, program.ieltsRequirement);
   const sat = requirementCriterion("sat", "SAT", profile.satScore, program.satRequirement);
 
+  const languageOfInstruction: ProfileProgramCriterion =
+    profile.preferredLanguage == null
+      ? { key: "languageOfInstruction", label: "Language of instruction", profileValue: "No preference", programValue: formatLanguageOfInstruction(program), status: "Not required", detail: "No language preference is set, so this does not affect your profile alignment." }
+      : program.languageOfInstruction === null
+        ? { key: "languageOfInstruction", label: "Language of instruction", profileValue: profile.preferredLanguage, programValue: "Unknown", status: "Needs verification", detail: "The current verified program data does not state the teaching language." }
+        : normalized(profile.preferredLanguage) === normalized(program.languageOfInstruction)
+          ? { key: "languageOfInstruction", label: "Language of instruction", profileValue: profile.preferredLanguage, programValue: program.languageOfInstruction, status: "Match", detail: "This program is taught in your preferred language." }
+          : { key: "languageOfInstruction", label: "Language of instruction", profileValue: profile.preferredLanguage, programValue: program.languageOfInstruction, status: "Action needed", detail: "The program language differs from your preference. Confirm that it works for you." };
+
   const profileBudget = formatBudget(profile);
   const programTuition = formatTuition(program);
   let tuition: ProfileProgramCriterion;
@@ -171,7 +184,7 @@ export function buildProfileProgramCriteria(
     timeline = { key: "timeline", label: "Intake / deadline", profileValue: profile.targetIntake, programValue: program.deadline, status: "Action needed", detail: "The published deadline year differs from your target intake year." };
   }
 
-  return [field, academic, ielts, sat, tuition, timeline];
+  return [field, academic, ielts, sat, languageOfInstruction, tuition, timeline];
 }
 
 function compareValue(value: string | null | undefined) {
@@ -201,6 +214,7 @@ export function buildProgramComparisonCriteria(
     ["ielts", "IELTS", formatRequirement(a.ieltsRequirement), formatRequirement(b.ieltsRequirement), null],
     ["sat", "SAT", formatRequirement(a.satRequirement), formatRequirement(b.satRequirement), null],
     ["academic", "Academic requirements", formatAcademicRequirement(a.academicRequirement), formatAcademicRequirement(b.academicRequirement), "Qualification-specific requirements still need individual verification."],
+    ["language", "Language of instruction", formatLanguageOfInstruction(a), formatLanguageOfInstruction(b), null],
     ["tuition", "Tuition", formatTuition(a), formatTuition(b), tuitionComparisonNote(a, b)],
     ["deadline", "Deadline / timing", compareValue(a.deadline), compareValue(b.deadline), null],
     ["verification", "Verification status", a.verificationDate ? `Verified ${a.verificationDate}` : "Verification date unknown", b.verificationDate ? `Verified ${b.verificationDate}` : "Verification date unknown", null],

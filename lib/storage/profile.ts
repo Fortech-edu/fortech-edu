@@ -29,6 +29,7 @@ export function isStudentProfile(value: unknown): value is StudentProfile {
     isNullableString(profile.intendedField) &&
     Array.isArray(profile.preferredCountries) &&
     profile.preferredCountries.every((country) => typeof country === "string") &&
+    (profile.preferredLanguage === undefined || isNullableString(profile.preferredLanguage)) &&
     isNullableString(profile.targetIntake) &&
     isNullableNumber(profile.gpa) &&
     isNullableNumber(profile.ieltsScore) &&
@@ -58,7 +59,7 @@ function parseStoredProfileValue(value: unknown): StoredProfile | null {
 
   return {
     version: 1,
-    profile: stored.profile,
+    profile: { ...stored.profile, preferredLanguage: stored.profile.preferredLanguage ?? null },
     step: Number(stored.step),
     completed: stored.completed,
     updatedAt,

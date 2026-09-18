@@ -124,6 +124,7 @@ export function toStudentProfile(profile: AIProfile): StudentProfile {
     fullName: null,
     nationality: null,
     countryOfResidence: null,
+    preferredLanguage: null,
     ...profile,
   };
 }

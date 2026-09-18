@@ -21,6 +21,14 @@ test("initial onboarding requires only the direction choices", () => {
   ]);
 });
 
+test("language preference is optional and legacy profiles restore it as unknown", () => {
+  assert.equal(emptyProfile.preferredLanguage, null);
+  const legacy = { ...profile() } as Record<string, unknown>;
+  delete legacy.preferredLanguage;
+  const restored = parseStoredProfile(JSON.stringify({ version: 1, profile: legacy, step: 3, completed: false }));
+  assert.equal(restored?.profile.preferredLanguage, null);
+});
+
 test("optional academic blanks remain null and valid", () => {
   assert.equal(numberOrNull(""), null);
   assert.equal(validStep(2, profile()), true);

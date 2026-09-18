@@ -6,6 +6,7 @@ const verifiedOn = "2026-09-17";
 export const programs: UniversityProgram[] = [
   {
     id: "aitu-computer-science",
+    languageOfInstruction: null,
     universityName: "Astana IT University",
     programName: "Computer Science",
     field: "Computer Science",
@@ -30,6 +31,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "aitu-software-engineering",
+    languageOfInstruction: null,
     universityName: "Astana IT University",
     programName: "Software Engineering",
     field: "Software Engineering",
@@ -54,6 +56,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "aitu-big-data-analysis",
+    languageOfInstruction: null,
     universityName: "Astana IT University",
     programName: "Big Data Analysis",
     field: "Data Science",
@@ -78,6 +81,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "utwente-technical-computer-science",
+    languageOfInstruction: "English",
     universityName: "University of Twente",
     programName: "Technical Computer Science",
     field: "Computer Science",
@@ -102,6 +106,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "utwente-business-information-technology",
+    languageOfInstruction: "English",
     universityName: "University of Twente",
     programName: "Business Information Technology",
     field: "Information Technology",
@@ -126,6 +131,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "utwente-international-business-administration",
+    languageOfInstruction: "English",
     universityName: "University of Twente",
     programName: "International Business Administration",
     field: "Business Administration",
@@ -150,6 +156,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "lut-software-systems-engineering",
+    languageOfInstruction: "English",
     universityName: "LUT University",
     programName: "Software and Systems Engineering",
     field: "Software Engineering",
@@ -174,6 +181,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "lut-digital-business",
+    languageOfInstruction: "English",
     universityName: "LUT University",
     programName: "Digital Business",
     field: "Business",
@@ -198,6 +206,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "lut-sustainable-international-business",
+    languageOfInstruction: "English",
     universityName: "LUT University",
     programName: "Sustainable International Business",
     field: "International Business",
@@ -222,6 +231,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "hkust-computer-science",
+    languageOfInstruction: "English",
     universityName: "Hong Kong University of Science and Technology",
     programName: "Computer Science",
     field: "Computer Science",
@@ -246,6 +256,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "hkust-data-science-technology",
+    languageOfInstruction: "English",
     universityName: "Hong Kong University of Science and Technology",
     programName: "Data Science and Technology",
     field: "Data Science",
@@ -270,6 +281,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "hkust-finance",
+    languageOfInstruction: "English",
     universityName: "Hong Kong University of Science and Technology",
     programName: "Finance",
     field: "Finance",
@@ -294,6 +306,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "hkust-global-business",
+    languageOfInstruction: "English",
     universityName: "Hong Kong University of Science and Technology",
     programName: "Global Business",
     field: "International Business",
@@ -318,6 +331,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "asu-computer-science",
+    languageOfInstruction: null,
     universityName: "Arizona State University",
     programName: "Computer Science",
     field: "Computer Science",
@@ -341,6 +355,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "asu-software-engineering",
+    languageOfInstruction: null,
     universityName: "Arizona State University",
     programName: "Software Engineering",
     field: "Software Engineering",
@@ -364,6 +379,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "asu-data-science",
+    languageOfInstruction: null,
     universityName: "Arizona State University",
     programName: "Data Science",
     field: "Data Science",
@@ -387,6 +403,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "asu-business-data-analytics",
+    languageOfInstruction: null,
     universityName: "Arizona State University",
     programName: "Business Data Analytics",
     field: "Business Analytics",
@@ -410,6 +427,7 @@ export const programs: UniversityProgram[] = [
   },
   {
     id: "asu-finance",
+    languageOfInstruction: null,
     universityName: "Arizona State University",
     programName: "Finance",
     field: "Finance",
