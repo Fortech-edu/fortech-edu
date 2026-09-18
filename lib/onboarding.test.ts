@@ -30,9 +30,27 @@ test("language preference is optional and legacy profiles restore it as unknown"
   assert.equal(restored?.profile.preferredLanguage, null);
 });
 
+test("activities and achievements are optional and legacy profiles restore them as empty", () => {
+  assert.equal(emptyProfile.activitiesAndAchievements, null);
+  assert.equal(validStep(2, profile({ activitiesAndAchievements: null })), true);
+  assert.equal(validStep(2, profile({ activitiesAndAchievements: "Robotics project" })), true);
+
+  const legacy = { ...profile() };
+  delete legacy.activitiesAndAchievements;
+  const restored = parseStoredProfile(JSON.stringify({ version: 1, profile: legacy, step: 2, completed: false }));
+  assert.equal(restored?.profile.activitiesAndAchievements, null);
+});
+
 test("onboarding review shows the selected language or a neutral no-preference value", () => {
   const source = readFileSync(new URL("../components/journey/onboarding-form.tsx", import.meta.url), "utf8");
   assert.ok(source.includes('Preferred language: {display(profile.preferredLanguage, "No language preference")}'));
+});
+
+test("onboarding collects activities as non-scoring context and shows them in review", () => {
+  const source = readFileSync(new URL("../components/journey/onboarding-form.tsx", import.meta.url), "utf8");
+  assert.ok(source.includes("Olympiads, projects, volunteering, or other achievements"));
+  assert.ok(source.includes("It does not affect deterministic matching."));
+  assert.ok(source.includes('profile.activitiesAndAchievements?.trim() || "Not provided"'));
 });
 
 test("optional academic blanks remain null and valid", () => {

@@ -45,6 +45,7 @@ export function DiagnosisView() {
   }
 
   const diagnosis = diagnoseProfile(profile);
+  const activities = profile.activitiesAndAchievements?.trim();
   const knownCount = diagnosis.strengths.length;
   const unknownCount = diagnosis.missingInformation.length;
 
@@ -73,6 +74,7 @@ export function DiagnosisView() {
             <dl className="mt-5 divide-y divide-white/15">
               <ProfileGroup title="Goal" values={[show(profile.targetDegree, "Not selected"), show(profile.intendedField, "Not selected"), show(profile.currentStudyStage, "Stage not provided")]} />
               <ProfileGroup title="Academics" values={[`GPA ${show(profile.gpa)}`, `IELTS ${show(profile.ieltsScore)}`, `SAT ${show(profile.satScore)}`]} />
+              {activities ? <ProfileGroup title="Activities and achievements" values={[activities]} /> : null}
               <ProfileGroup title="Preferences" values={[profile.preferredCountries.join(" · ") || "Countries not selected", budgetLabel(profile), show(profile.targetIntake, "Intake not selected")]} />
             </dl>
           </div>

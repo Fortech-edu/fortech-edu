@@ -9,6 +9,7 @@ export const emptyProfile: StudentProfile = {
   intendedField: null,
   preferredCountries: [],
   preferredLanguage: null,
+  activitiesAndAchievements: null,
   targetIntake: null,
   gpa: null,
   ieltsScore: null,

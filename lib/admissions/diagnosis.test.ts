@@ -30,6 +30,15 @@ test("diagnosis separates strengths, actions, and unknown information", () => {
   assert.ok(diagnosis.missingInformation.includes("SAT score"));
 });
 
+test("diagnosis surfaces provided activities as context without warning when empty", () => {
+  const empty = diagnoseProfile({ ...profile, activitiesAndAchievements: "  " });
+  const provided = diagnoseProfile({ ...profile, activitiesAndAchievements: "Robotics olympiad and volunteering" });
+
+  assert.equal(empty.strengths.some((item) => item.includes("Activities and achievements")), false);
+  assert.equal(empty.missingInformation.some((item) => item.includes("Activities")), false);
+  assert.ok(provided.strengths.includes("Activities and achievements are available for application planning"));
+});
+
 test("diagnosis UI keeps missing-profile recovery and the Matches CTA", () => {
   const source = readFileSync(
     new URL("../../components/journey/diagnosis-view.tsx", import.meta.url),
@@ -40,4 +49,5 @@ test("diagnosis UI keeps missing-profile recovery and the Matches CTA", () => {
   assert.ok(source.includes('href="/onboarding"'));
   assert.ok(source.includes('href="/matches"'));
   assert.ok(source.includes("See programs for my profile"));
+  assert.ok(source.includes('title="Activities and achievements" values={[activities]}'));
 });
