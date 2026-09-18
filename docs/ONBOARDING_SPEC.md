@@ -37,11 +37,27 @@ This section strictly distinguishes behavior provably implemented in the current
 
 ### 1.1 Behavior Already Implemented Today
 The following features and contracts are implemented and tested on `main`:
-- **Four-Step Onboarding Form (`components/journey/onboarding-form.tsx`)**:
-  - Step 1 (Direction): `currentStudyStage` (Required), `targetDegree` (Required), `intendedField` (Required).
-  - Step 2 (Academics): `gpa` (Optional), `ieltsScore` (Optional), `satScore` (Optional), `activitiesAndAchievements` (Optional textarea for contextual achievements).
-  - Step 3 (Preferences): `preferredCountries` (Optional multi-select), `preferredLanguage` (Optional select dropdown), `annualBudget` (Optional number) with `budgetCurrency` (Select dropdown), `targetIntake` (Required select dropdown).
-  - Step 4 (Review): Form review sections (`Goal`, `Academics`, `Preferences`), inline edit actions returning to earlier steps, missing intake notification, trust explanation card, and `"Analyze my profile"` submit action.
+- **Goal-First Step Flow Architecture (`components/journey/onboarding-form.tsx`)**:
+  - The onboarding journey incorporates target-first entry and requirements preview before current-state questionnaires, spanning 5 sequential flow stages (`flowStep = targetStage ? 1 : step + 1`):
+    - **Target Stage (`targetStage = true`)**: Entry screen prompting the student to select a target university and degree program from verified catalog data, followed immediately by a preview of verified program requirements (`components/journey/target-step.tsx`).
+    - **Step 1 (Direction)**: `currentStudyStage` (Required), `targetDegree` (Required), `intendedField` (Required).
+    - **Step 2 (Academics & Activities)**: `gpa` (Optional), `ieltsScore` (Optional), `satScore` (Optional), `activitiesAndAchievements` (Optional textarea for contextual achievements).
+    - **Step 3 (Preferences)**: `preferredCountries` (Optional multi-select), `preferredLanguage` (Optional select dropdown), `annualBudget` (Optional number) with `budgetCurrency` (Select dropdown), `targetIntake` (Required select dropdown).
+    - **Step 4 (Review)**: Form review sections (`Target`, `Goal`, `Academics`, `Preferences`) with inline edit actions, missing intake notification, trust explanation card, and `"Analyze my profile"` submit action.
+- **Goal-First Target Selection & Requirements Preview (`components/journey/target-step.tsx`)**:
+  - University selection (`target-university`): Dropdown of sorted distinct university names drawn strictly from verified catalog data in `data/programs.ts`.
+  - Program selection (`target-program`): Dropdown filtered by the selected university, listing verified Bachelor offerings. Disabled until a university is chosen.
+  - Requirements-first preview (`RequirementsPreview`): Surfaces verified facts computed via `buildTargetRequirementFacts(program)` in `lib/admissions/presentation.ts`:
+    - Academic requirement (`program.academicRequirement`)
+    - English requirement (`program.ieltsRequirement`)
+    - Standardized test (`program.satRequirement`)
+    - Language of instruction (`program.languageOfInstruction`)
+    - Motivation and recommendations (`program.applicationDocuments`)
+    - Application deadline (`program.deadline`)
+  - Requirement state taxonomy: Neutral badges distinguish `Published` (`known`), `Needs verification` (`unknown`), and `Not required` (`not_required`).
+  - Official source links: Displays verified university sources categorized by type (`sourceTypeLabels`: `Admissions`, `Tuition`, `Deadline`, `Program page`), opening in a new tab (`target="_blank" rel="noopener noreferrer"`).
+  - Target selection persistence: Selecting or clearing a target program calls `saveSelectedProgram(program?.id ?? null)` from `lib/storage/selection.ts`, actively reading from `loadSelectedProgram()` on initialization.
+  - Review integration: Displays the selected target (`{target.programName} @ {target.universityName}`, `{target.country}`) on Step 4 Review with an inline `Edit` action calling `setTargetStage(true)`.
 - **Validation Rules (`lib/onboarding.ts`)**:
   - `currentStudyStage`: Required on Step 1. Valid options: `"Grade 10"`, `"Grade 11"`, `"Grade 12"`, `"Undergraduate student"`, `"Graduate"`.
   - `targetDegree`: Required on Step 1. Must strictly equal `"Bachelor"`.
@@ -81,27 +97,25 @@ The following features and contracts are implemented and tested on `main`:
 - **Current Onboarding Storage & Sync**:
   - Local browser persistence uses `localStorage`:
     - `admission-journey:v1:profile` (`StoredProfile`)
+    - `admission-journey:v1:selected-program` (Stored target program ID via `loadSelectedProgram()` and `saveSelectedProgram()` from `lib/storage/selection.ts`). Onboarding actively loads `initialTarget` on mount and writes program selections/clearance to this key.
     - `admission-journey:v1:edit-baseline` (Baseline snapshot when editing)
     - `admission-journey:v1:change-impact` (Computed `ChangeImpact` diff)
   - `useClientReady()` delays mounting until client storage is ready.
   - Supabase synchronization (`lib/supabase/sync.ts`): Conflict resolution follows `chooseNewer(local, remote)` where the **newer `updatedAt` wins**.
-  - Note: `admission-journey:v1:selected-program` exists in `lib/storage/selection.ts` for Program Detail and Roadmap views, but is **not** currently read or written by the onboarding form.
+  - Reuses existing journey state: Target program persistence in onboarding utilizes the same `admission-journey:v1:selected-program` storage key used by Program Detail and Roadmap views, avoiding fragmented target state.
 - **Post-Onboarding Destination**:
   - Submitting Step 4 navigates directly to `/diagnosis`.
 
 ### 1.2 Behavior Required by Master TZ but Not Yet Implemented
 The following features are defined in `docs/FORTECH_MASTER_TZ.md` and scheduled for subsequent tasks in `docs/IMPLEMENTATION_PLAN.md`:
-- **Task 4 (`feature/goal-first-target`)**:
-  - Goal-first target entry foundation: User chooses a target university and program (`[Program] @ [University]`) from verified catalog data at the beginning of the flow.
-  - Requirements-first preview: Surfacing verified program criteria (academics, IELTS, SAT, instruction language, application documents, deadline, tuition) before asking for personal profile metrics.
-  - Storing the selected target program during onboarding.
 - **Task 5 (`feature/instant-diagnosis`)**:
   - Minimal current-state inputs on the Landing page.
-  - Target vs. Current State requirement comparison (Metric | Requirement | Current | Status).
+  - Target vs. Current State requirement comparison (Metric | Target Requirement | Current Input | Status) before registration.
   - Instant diagnosis result before signup/registration with 3–5 next actions.
 - **Task 6 (`feature/onboarding-prefill`)**:
   - State transfer into onboarding: Pre-filling the selected target program and any profile metrics already supplied during the instant check so questions are not asked twice.
-  - Preserving backward compatibility for sessions starting directly at `/onboarding`.
+  - Preserving backward compatibility for direct sessions starting at `/onboarding`.
+  - Continuity between Landing instant check and full onboarding progression.
 
 ### 1.3 Optional / Future Ideas that Are NOT Current Requirements
 The following items are explicitly **out of scope** and are not requirements for the hackathon release:
@@ -120,64 +134,70 @@ The onboarding experience accounts for four entry states across current and plan
 ```mermaid
 flowchart TD
     subgraph Entry Points
-        A["Landing / Admission Check<br/>(Target Selected — Target Behavior)"]
+        A["Landing / Admission Check<br/>(Target Selected — Task 5/6 Target Behavior)"]
         B["Direct Entry / Header Link<br/>(/onboarding, Clean Session)"]
-        C["Returning Partial User<br/>(Draft Profile in Storage)"]
+        C["Returning Partial User<br/>(Draft Profile & Target in Storage)"]
         D["Returning Completed User<br/>(Edit Mode from Diagnosis)"]
     end
 
     subgraph Onboarding Flow
-        E["Resolve Target Program<br/>(Target Behavior: Task 4/6)"]
-        F["Requirements Preview<br/>(Target Behavior: Task 4)"]
-        G["Current-State Questions<br/>(Direction, Academics, Prefs)"]
-        H["Review Screen<br/>(Profile Summary + Edit Actions)"]
+        E["Target Selection & Requirements Preview<br/>(TargetStep, targetStage — Current)"]
+        F["Current-State Questions<br/>(Step 1 Direction, Step 2 Academics, Step 3 Prefs)"]
+        G["Review Screen<br/>(Target, Goal, Academics, Prefs + Edit Actions)"]
     end
 
     subgraph Destination
-        I["Full Diagnosis (/diagnosis)<br/>Deterministic Analysis + AI Context"]
+        H["Full Diagnosis (/diagnosis)<br/>Deterministic Analysis + AI Context"]
     end
 
-    A -.->|"Target Flow: Pre-fills Target & Data"| E
-    B -->|"Current Flow: Opens Step 1"| G
-    C -->|"Restores Saved Step & State"| G
-    D -->|"Loads Edit Baseline & Review"| H
+    A -.->|"Target Flow (Task 6): Pre-fills Target & Data"| E
+    B -->|"Current Flow: Opens Target Selection"| E
+    C -->|"Restores Saved Target & Step"| F
+    D -->|"Loads Edit Baseline & Review"| G
 
-    E -.-> F
-    F -.-> G
-    G --> H
-    H -->|"Submit & Recalculate"| I
+    E -->|"Continue to Current State"| F
+    F --> G
+    G -->|"Submit & Recalculate"| H
 ```
 
-### 2.1 State A: User Arrives with a Selected Target (Target Behavior — Tasks 4 & 6)
-- **Context**: A visitor interacts with the Landing Page Goal-first hero or Instant Check widget and selects a specific verified program (e.g. `aitu-computer-science`).
-- **Target Flow Hand-off**:
-  - The chosen target program is carried into onboarding.
-  - Preliminary inputs (such as study stage, GPA, or IELTS) are pre-filled.
-  - The flow presents the verified requirements for that target program before prompting for missing fields.
+### 2.1 State A: User Arrives with a Selected Target (Target Behavior — Task 6)
+- **Context**: A visitor interacts with the Landing Page Goal-first hero or Instant Check widget (Task 5: `feature/instant-diagnosis`) and selects a specific verified program (e.g. `aitu-computer-science`).
+- **Target Flow Hand-off (Task 6: `feature/onboarding-prefill`)**:
+  - The chosen target program is persisted in `admission-journey:v1:selected-program` and carried into onboarding.
+  - Preliminary profile metrics provided during the instant check are pre-filled so the student is not asked duplicate questions.
+  - The flow opens with the chosen target and its verified requirements preview loaded, allowing the student to confirm their target and proceed directly into any remaining current-state questions.
 
 ### 2.2 State B: Direct Entry at `/onboarding` Without a Target (Current Implementation)
 - **Context**: User opens `/onboarding` directly with clean browser storage.
 - **Current Flow Hand-off**:
   - `loadStoredProfile()` returns `null`.
+  - `loadSelectedProgram()` returns `null`.
 - **Current User Experience**:
-  - Opens on Step 1: Direction.
-  - Prompts for `currentStudyStage`, `targetDegree` (`"Bachelor"`), and `intendedField` (`"Computer Science"` or `"Business"`).
+  - Opens in Target Stage (`targetStage = true`, Step 01 of 05: *"Where do you want to get in?"*).
+  - Prompts the user to select a university and program from the verified catalog.
+  - As soon as a program is selected, `RequirementsPreview` displays its known verified criteria and official source links, and `saveSelectedProgram(program.id)` persists the selection.
+  - Clicking *"Continue to current state"* transitions `targetStage` to `false` and advances to Step 1 (Direction: `currentStudyStage`, `targetDegree`, `intendedField`).
 
 ### 2.3 State C: Returning User with Partial Profile (Current Implementation)
 - **Context**: User returns to `/onboarding` after completing part of the form in an earlier session.
 - **Current Flow Hand-off**:
   - `loadStoredProfile()` returns a `StoredProfile` with `completed === false` and `step` $\in \{1, 2, 3\}$.
+  - `loadSelectedProgram()` returns the stored target program ID (if previously selected).
 - **Current User Experience**:
   - `useClientReady()` delays rendering until client storage is loaded.
   - Form restores the user's active step and all previously saved field values.
+  - The target program is restored in `target` state. If the user clicks `Back` from Step 1, the form returns to `targetStage` with the selected program and requirements intact.
 
 ### 2.4 State D: Returning User with Completed Profile in Edit Mode (Current Implementation)
 - **Context**: An existing user clicks "Edit admission profile" from `/diagnosis`.
 - **Current Flow Hand-off**:
   - `loadStoredProfile()` returns `StoredProfile` with `completed === true`.
+  - `loadSelectedProgram()` returns the active target program ID.
   - `saveEditBaseline(initial.profile)` takes a snapshot in `admission-journey:v1:edit-baseline`.
 - **Current User Experience**:
-  - User can edit fields across steps.
+  - User lands on Step 4 Review with all previously submitted information, including the Target section.
+  - User can edit the target program by clicking `Edit` on the Target review section, which sets `setTargetStage(true)` to return to `TargetStep`.
+  - User can edit Goal, Academics, or Preferences via their respective `Edit` buttons (`edit(1)`, `edit(2)`, `edit(3)`).
   - Upon submitting Step 4, `buildChangeImpact()` calculates metric changes and program eligibility transitions.
   - The diff is saved to `admission-journey:v1:change-impact`, and the user is routed to `/diagnosis` with Change Impact feedback.
 
@@ -185,31 +205,38 @@ flowchart TD
 
 ## 3. Goal-First Behavior & Target Entity
 
-### 3.1 "Dream First" Entry (Target Behavior — Task 4)
-In accordance with Master TZ Section 3.2, the onboarding journey will anchor to a concrete goal:
+### 3.1 "Dream First" Entry (Current Implementation)
+In accordance with Master TZ Section 3.2, the onboarding journey anchors to a concrete goal:
 > *"Where do you want to get in?"*
 
-Rather than opening with grades, the target interaction asks:
-1. **Intended Study Field**: Academic area (`"Computer Science"` or `"Business"`).
-2. **Target University & Program**: A specific offering from Fortech's verified catalog (e.g. *Computer Science @ Astana IT University* or *Software Systems Engineering @ LUT University*).
-3. **Target Intake**: Application timeline (`"Fall 2027"`, `"Spring 2028"`, `"Fall 2028"`).
+Rather than opening with personal academic grades or budget constraints, the onboarding flow opens with target selection and verified requirements preview:
+1. **Target University & Program**: A specific offering selected from Fortech's verified catalog (`data/programs.ts`), such as *Computer Science @ Astana IT University* or *Software Systems Engineering @ LUT University*.
+2. **Known Requirements Preview**: Immediate, transparent visibility into the published admissions criteria, standardized test rules, language requirements, deadlines, and official university source links for that chosen program.
+3. **Current Study Stage & Intended Field**: Academic area (`"Computer Science"` or `"Business"`) and current school stage collected on Step 1.
+4. **Target Intake**: Application timeline (`"Fall 2027"`, `"Spring 2028"`, `"Fall 2028"`) collected on Step 3.
 
 ### 3.2 Target University & Program Selection
 - **Catalog Grounding**: Selection options are drawn strictly from the verified `programs` dataset in `data/programs.ts`. Free-text entry of unverified institutions is not permitted.
 - **Scope**: Current catalog covers verified Bachelor programs in Computer Science and Business disciplines across Finland, Germany, Kazakhstan, and Poland.
+- **University Selection (`target-university`)**: A select dropdown listing all unique university names in the dataset, alphabetically sorted.
+- **Program Selection (`target-program`)**: A select dropdown filtered by the chosen university, listing verified Bachelor offerings. The program dropdown is disabled until a university is selected.
+- **Selection Action**: Selecting a program calls `onSelect(program)`, updating component state, clearing any validation error, and persisting the selection.
 
 ### 3.3 Target Intake & Degree Constraints
 - **`targetDegree`**:
   - `StudentProfile.targetDegree` is **not** inferred or copied from `program.degreeLevel`.
-  - In the current repo contract, `targetDegree` is selected by the student and validated to strictly equal `"Bachelor"`.
+  - In the current repo contract, `targetDegree` is selected by the student on Step 1 and validated to strictly equal `"Bachelor"`.
 - **`intendedField`**:
   - Selected by the student on Step 1 (`"Computer Science"` or `"Business"`).
 - **`targetIntake`**:
-  - Selected by the student (`"Fall 2027"`, `"Spring 2028"`, or `"Fall 2028"`).
+  - Selected by the student on Step 3 (`"Fall 2027"`, `"Spring 2028"`, or `"Fall 2028"`).
 
 ### 3.4 Target Program Storage
-- In the current implementation, `onboarding-form.tsx` does **not** persist a selected target program.
-- Task 4 will introduce the appropriate target selection persistence mechanism, linking the chosen program into downstream diagnosis and roadmap views.
+- Onboarding actively reads and writes target program persistence using `saveSelectedProgram(program?.id ?? null)` and `loadSelectedProgram()` from `lib/storage/selection.ts`.
+- Reuses the shared journey key `admission-journey:v1:selected-program`.
+- On initialization, `OnboardingForm` reads `initialTarget = getProgramById(loadSelectedProgram())`.
+- When a student selects or clears a program, `saveSelectedProgram(program?.id ?? null)` updates browser storage synchronously.
+- This ensures the chosen target program is immediately shared across Onboarding, Program Detail, and Roadmap views without data duplication or state drift.
 
 ### 3.5 No Automatic Side Effects on `preferredCountries`
 - Selecting a target university, program, or country must **NOT** automatically populate or modify `preferredCountries`.
@@ -219,8 +246,8 @@ Rather than opening with grades, the target interaction asks:
 
 ## 4. Requirements-First Screen
 
-### 4.1 Cognitive Model: Requirements Before Questions (Target Behavior — Task 4)
-Master TZ Section 4 (P0.6) specifies that verified program requirements should be displayed **before** asking for detailed personal academic metrics.
+### 4.1 Cognitive Model: Requirements Before Questions (Current Implementation)
+Master TZ Section 4 (P0.6) specifies that verified program requirements must be displayed **before** asking for detailed personal academic metrics.
 
 **Rationale**:
 - Providing a GPA or test score in isolation lacks clear motivation.
@@ -229,30 +256,31 @@ Master TZ Section 4 (P0.6) specifies that verified program requirements should b
 - Every subsequent input field has an immediate, student-understood purpose.
 
 ### 4.2 Displayed Program Requirements Matrix
-When a target program is loaded, the following verified facts from `data/programs.ts` are presented:
+When a target program is loaded, `RequirementsPreview` (`components/journey/target-step.tsx`) renders the target header (`{program.programName} @ {program.universityName}`, `{program.country} · {program.degreeLevel}`) and displays 6 verified requirement facts computed via `buildTargetRequirementFacts(program)` from `lib/admissions/presentation.ts`:
 
-| Requirement Category | Program Data Field | Displayed Information | Status Badge |
-| :--- | :--- | :--- | :--- |
-| **Academic Baseline** | `program.academicRequirement` | Requirement label (e.g. "UNT"), minimum score, or qualification notes. | `Verified Requirement` or `Qualification-specific` |
-| **Language of Instruction** | `program.languageOfInstruction` | Teaching language (e.g. "English"). | `Verified` or `Needs verification` (`null`) |
-| **English Proficiency** | `program.ieltsRequirement` | Minimum IELTS score (e.g. "6.5 minimum") or whether English proof is required. | `Verified Requirement` or `Not required` or `Needs verification` |
-| **Standardized Tests** | `program.satRequirement` | Minimum SAT score or explicit exemption status. | `Verified Requirement` or `Not required` or `Needs verification` |
-| **Required Documents** | `program.applicationDocuments` | Whether motivation letter or recommendation letters are officially required. | `Verified Requirement` or `Needs verification` |
-| **Application Deadline** | `program.deadline` | Published application deadline date. | `Verified Deadline` or `Needs verification` |
-| **Tuition Baseline** | `program.tuition`, `tuitionCurrency` | Published tuition fee per year or semester. | `Published Fee` or `Needs verification` |
+| Requirement Category | Program Data Field | Displayed Information Format | Detail / Note Format | Status Badge (`state`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Academic Requirement** | `program.academicRequirement` | `${req.label} · ${formatRequirement(req)}` or `"Unknown"` | `req.notes ?? "No additional verified note is available."` | `Published` (`known`), `Needs verification` (`unknown`), or `Not required` (`not_required`) |
+| **English Requirement** | `program.ieltsRequirement` | `${req.label} · ${formatRequirement(req)}` or `"Unknown"` | `req.notes ?? "No additional verified note is available."` | `Published` (`known`), `Needs verification` (`unknown`), or `Not required` (`not_required`) |
+| **Standardized Test** | `program.satRequirement` | `${req.label} · ${formatRequirement(req)}` or `"Unknown"` | `req.notes ?? "No additional verified note is available."` | `Published` (`known`), `Needs verification` (`unknown`), or `Not required` (`not_required`) |
+| **Language of Instruction** | `program.languageOfInstruction` | `formatLanguageOfInstruction(program)` (e.g. `"English"`, `"Unknown"`) | `"Published program language."` or `"The current verified data does not state the teaching language."` | `Published` (`known`) or `Needs verification` (`unknown`) |
+| **Motivation & Recommendations** | `program.applicationDocuments` | `Motivation letter: [Req/Not req/Needs ver] · Recommendation letters: [Req/Not req/Needs ver]` | `"Only document requirements represented in the current program data are shown."` | `Published` (`known`), `Needs verification` (`unknown`), or `Not required` (`not_required`) |
+| **Application Deadline** | `program.deadline` | `program.deadline ?? "Unknown"` | `"Published deadline; recheck the official source before applying."` or `"No verified deadline is available in the current data."` | `Published` (`known`) or `Needs verification` (`unknown`) |
 
 ### 4.3 Verified vs. Unknown Status Taxonomy
-Requirement states use neutral, evidence-based badges:
-- **Verified Requirement**: Fact verified from official university publication with source link.
-- **Needs Verification**: Requirement exists, but exact score minimums or international conversions are qualification-specific, or data is pending verification.
-- **Not Required**: Program officially confirms the metric is not mandatory for admission.
-- **Unknown / Unverified**: Information not currently verified in the dataset.
+Requirement states use neutral, evidence-based badges defined in `components/journey/target-step.tsx`:
+- **Published** (`known`): Badge `bg-forest-100 text-forest-700`. Fact verified from official university publication.
+- **Needs verification** (`unknown`): Badge `bg-slate-100 text-slate-700`. Information is unverified, qualification-specific, or missing from the current dataset. Never penalized as a failure.
+- **Not required** (`not_required`): Badge `bg-forest-50 text-forest-700`. The university explicitly confirms this metric is not mandatory for admission.
 
 ### 4.4 Official Provenance & Source Attribution
-- Every requirement card includes an official source attribution:
-  > *Source: Bachelor admissions · astanait.edu.kz*
-- Clicking opens the official university URL in a new tab (`target="_blank" rel="noopener noreferrer"`).
-- If a requirement is not verified in `data/programs.ts`, it is marked as `Needs verification` or left blank. No requirements may be hallucinated or generated by AI.
+- Every requirements preview section includes an **Official sources** list rendered directly from `program.sources`.
+- Each source entry displays:
+  - Source type badge: `sourceTypeLabels[source.type]` (`Admissions`, `Tuition`, `Deadline`, `Program page`).
+  - Link text: `source.title`.
+  - Hyperlink: `source.url` opening in a new tab (`target="_blank" rel="noopener noreferrer"`).
+- If no official source URL is recorded for a program, the interface displays: *"No official source link is available."*
+- If a requirement is not verified in `data/programs.ts`, it is marked as `Needs verification` (`unknown`). No requirements or deadlines may be hallucinated or generated by AI.
 
 ---
 
@@ -395,27 +423,46 @@ Requirement states use neutral, evidence-based badges:
 ### 5.4 Step Sequence Architecture
 
 ```
-[ Step 1: Direction ] ──▶ [ Step 2: Academics & Activities ] ──▶ [ Step 3: Preferences ] ──▶ [ Step 4: Review ]
+[ Flow Step 1: Target Selection & Requirements Preview ] ──▶ [ Flow Step 2 (Step 1): Direction ] ──▶ [ Flow Step 3 (Step 2): Academics & Activities ] ──▶ [ Flow Step 4 (Step 3): Preferences ] ──▶ [ Flow Step 5 (Step 4): Review ]
 ```
 
-- **Step 1: Direction**
-  - Set `targetDegree` (`"Bachelor"`).
-  - Set `intendedField` (`"Computer Science"` or `"Business"`).
-  - Set `currentStudyStage` (`"Grade 10"`, `"Grade 11"`, `"Grade 12"`, `"Undergraduate student"`, or `"Graduate"`).
-- **Step 2: Academics & Activities**
+The onboarding flow spans 5 sequential flow stages (`flowStep = targetStage ? 1 : step + 1`), providing clear visual progress navigation across desktop and mobile:
+- **Flow Step 1 (`targetStage = true`): Target Selection & Requirements Preview**
+  - Header: *"Where do you want to get in?"* — *"Choose a real program target and review its known requirements before entering your current state."*
+  - Select target university (`target-university`) from verified institutions.
+  - Select target program (`target-program`) from verified Bachelor catalog offerings.
+  - Immediate `RequirementsPreview` showing 6 verified requirement facts (academic, IELTS, SAT, language of instruction, motivation/recommendations, deadline) with status badges (`Published`, `Needs verification`, `Not required`) and official university source links.
+  - Primary action: *"Continue to current state"* (transitions `targetStage = false` and advances to Step 1).
+  - Validation: Attempting to continue without choosing a program displays: *"Choose a target program to continue."*
+- **Flow Step 2 (Step 1): Current State & Direction**
+  - Header: *"Where are you today?"* — *"Add your current stage and study direction after reviewing the target requirements."*
+  - Set `currentStudyStage` (`"Grade 10"`, `"Grade 11"`, `"Grade 12"`, `"Undergraduate student"`, or `"Graduate"`). Required.
+  - Set `targetDegree` (`"Bachelor"`). Required.
+  - Set `intendedField` (`"Computer Science"` or `"Business"`). Required.
+  - Actions: `Back` returns to Target Stage (`setTargetStage(true)`). `Continue` advances to Step 2.
+- **Flow Step 3 (Step 2): Academics & Activities**
+  - Header: *"Your academics"* — *"Add what you know today. Blank scores remain unknown."*
   - Banner: *"Blank means unknown. We never turn a missing score into a pass or a fail."*
-  - Optional academic inputs: `gpa`, `ieltsScore`, `satScore`.
-  - Optional context textarea: `activitiesAndAchievements`.
-- **Step 3: Preferences**
-  - `preferredCountries` (checkboxes).
-  - `preferredLanguage` (select dropdown from verified program languages).
-  - `annualBudget` and `budgetCurrency`.
-  - `targetIntake` (select dropdown).
-- **Step 4: Review & Admission Profile**
-  - Grouped review cards: Goal, Academics (including activities), Preferences.
-  - Edit button per section allowing users to return directly to that step.
-  - Trust notice explaining deterministic matching and AI boundaries.
-  - Submit button: *"Analyze my profile"*.
+  - Optional academic inputs: `gpa` (0.00–4.00), `ieltsScore` (0.0–9.0), `satScore` (400–1600).
+  - Optional context textarea: `activitiesAndAchievements` (*"This provides context for application planning and materials. It does not affect deterministic matching."*).
+  - Actions: `Back` returns to Step 1. `Continue` advances to Step 3.
+- **Flow Step 4 (Step 3): Preferences**
+  - Header: *"Your preferences"* — *"Choose where, when, and what tuition budget works for you."*
+  - `preferredCountries` (checkboxes for verified catalog countries).
+  - `preferredLanguage` (select dropdown from verified non-null program languages + No preference).
+  - `annualBudget` and `budgetCurrency` (number + select dropdown).
+  - `targetIntake` (`"Fall 2027"`, `"Spring 2028"`, `"Fall 2028"`). Required.
+  - Actions: `Back` returns to Step 2. `Continue` advances to Step 4.
+- **Flow Step 5 (Step 4): Review & Admission Profile**
+  - Header: *"Your admission profile"* — *"Review what we know before your profile is analyzed."*
+  - Grouped review cards with inline `Edit` actions:
+    - **Target**: Selected program and university name (`{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}`) and country. `Edit` action calls `setTargetStage(true)`.
+    - **Goal**: Target degree, intended field, and current study stage. `Edit` action calls `edit(1)`.
+    - **Academics**: GPA, IELTS, SAT, and activities text. `Edit` action calls `edit(2)`.
+    - **Preferences**: Preferred countries, preferred language, annual budget, and target intake. `Edit` action calls `edit(3)`.
+  - Missing intake notification if `targetIntake` is invalid.
+  - Trust explanation card ("How we'll use this").
+  - Actions: `Back` returns to Step 3. Primary submit button: *"Analyze my profile"*.
 
 ---
 
@@ -423,9 +470,13 @@ Requirement states use neutral, evidence-based badges:
 
 ### 6.1 State Transfer (Target Behavior — Task 6)
 To satisfy Master TZ Section 4 (P0.9):
-- Any input entered during pre-onboarding (such as on the Landing page instant check) will be carried into onboarding.
-- Pre-supplied values will populate automatically.
-- Users will not be asked to re-enter data that has already been provided.
+- Landing page Instant Check and minimal current-state inputs are owned by Task 5 (`feature/instant-diagnosis`).
+- State transfer and continuity into onboarding are owned by Task 6 (`feature/onboarding-prefill`).
+- When Task 6 is implemented:
+  - Any input entered during pre-onboarding on Landing will be carried into onboarding via storage or navigation state.
+  - Pre-supplied values (such as selected target program, study stage, GPA, or IELTS) will populate automatically.
+  - Users will not be asked to re-enter data that has already been provided.
+  - Direct entry at `/onboarding` without prior Landing interaction will continue to function seamlessly via the current 5-stage flow.
 
 ### 6.2 Current Browser Storage Contracts
 Onboarding in the current codebase reads and writes state in browser `localStorage`:
@@ -439,10 +490,12 @@ Onboarding in the current codebase reads and writes state in browser `localStora
     updatedAt: string;   // ISO-8601 timestamp
   };
   ```
+- **`admission-journey:v1:selected-program`**:
+  - Key: `SELECTED_PROGRAM_STORAGE_KEY` from `lib/storage/selection.ts`.
+  - Reuses the shared journey state: Onboarding initializes `initialTarget` on mount via `loadSelectedProgram()` and persists selected or cleared target program IDs via `saveSelectedProgram(program?.id ?? null)`.
+  - Shared across views: This exact same key is read and updated by Program Detail and Roadmap views, ensuring a single source of truth for the student's selected target throughout the session.
 - **`admission-journey:v1:edit-baseline`**: Stores `StudentProfile` snapshot when editing an already completed profile.
 - **`admission-journey:v1:change-impact`**: Stores the computed `ChangeImpact` diff after updating a profile.
-
-*Note on target persistence*: `SELECTED_PROGRAM_STORAGE_KEY` (`admission-journey:v1:selected-program`) exists in `lib/storage/selection.ts` for Program Detail and Roadmap views, but is not currently read or written by the onboarding form. Target persistence in onboarding will be integrated under Task 4 / Task 6.
 
 ### 6.3 Hydration & Reactive State Management
 - Storage is loaded client-side via `useClientReady()`, rendering a placeholder (*"Restoring your saved progress…"*) until mounted to avoid SSR hydration mismatches.
@@ -515,21 +568,22 @@ In accordance with AGENTS.md Section 5:
 Step 4 allows the student to review their profile before generating their full analysis:
 1. **Title & Subtitle**: *"Your admission profile is ready"* — *"Review the information that will shape your deterministic analysis."*
 2. **Review Sections with Edit Actions**:
-   - **Goal**: Target degree, intended field, and current study stage. Includes `Edit` button targeting Step 1.
-   - **Academics**: GPA, IELTS, SAT, and activities text. Includes `Edit` button targeting Step 2.
-   - **Preferences**: Preferred countries, preferred language of instruction, annual tuition budget, and target intake. Includes `Edit` button targeting Step 3.
-3. **Missing Intake Warning**: If `targetIntake` was cleared or unselected, an alert states: *"Add a target intake in Preferences before analysis."*
+   - **Target**: Selected program and university name (`{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}`) and country (`{target?.country ?? "Country unknown"}`). Includes an `Edit` button calling `setTargetStage(true)` to return directly to Target Stage.
+   - **Goal**: Target degree, intended field, and current study stage. Includes `Edit` button calling `edit(1)` targeting Step 1.
+   - **Academics**: GPA, IELTS, SAT, and activities text. Includes `Edit` button calling `edit(2)` targeting Step 2.
+   - **Preferences**: Preferred countries, preferred language of instruction, annual tuition budget, and target intake. Includes `Edit` button calling `edit(3)` targeting Step 3.
+3. **Missing Intake Warning**: If `targetIntake` was cleared or unselected, an alert states: *"Add a target intake in Preferences before analysis. Use the Preferences edit action above."*
 4. **How We'll Use This (Trust Notice)**:
    - Match profile against verified program data.
    - Keep unknown information unknown.
    - Separate profile fit from eligibility — Fit Score is not admission probability.
-   - AI may explain results, but cannot change eligibility, Fit Score, or verified program facts.
+   - AI may help explain results later, but cannot change eligibility, Fit Score, or verified program facts.
 5. **Footer Actions**:
    - `Back` button to return to Step 3.
    - Primary submit button: `Analyze my profile`.
 
 ### 8.2 Target vs. Current State Gap Comparison Matrix (Target Behavior — Tasks 5 & 6)
-When a target program is selected in the goal-first flow, Step 4 will include a side-by-side gap comparison table:
+When Tasks 5 and 6 are implemented, Step 4 will incorporate the deterministic target-versus-current gap comparison table unified with the Landing page Instant Diagnosis widget:
 
 | Metric | Target Requirement (Verified) | Current Input | Status |
 | :--- | :--- | :--- | :--- |
@@ -539,6 +593,11 @@ When a target program is selected in the goal-first flow, Step 4 will include a 
 | **Language of Instruction** | Published teaching language | Preferred language | `Match` / `Action needed` / `Needs verification` |
 | **Annual Tuition** | Published tuition per year | Student budget | `Ready` / `Needs verification` |
 | **Target Intake** | Application cycle deadline | Student target intake | `Ready` / `Action needed` |
+
+*Scope Boundaries*:
+- **Task 5 (`feature/instant-diagnosis`)**: Owns the Landing page Instant Check, minimal current-state inputs, deterministic requirement comparison, and pre-signup diagnosis with 3–5 next actions.
+- **Task 6 (`feature/onboarding-prefill`)**: Owns transferring state into onboarding, prefilling target and metrics, and avoiding duplicate prompts.
+- The in-onboarding gap comparison matrix on Step 4 Review will be unified with the Task 5 Instant Diagnosis component under Tasks 5 & 6. Neither Task 5 nor Task 6 is currently implemented.
 
 ---
 
@@ -560,6 +619,15 @@ Upon clicking `"Analyze my profile"`:
 ```ts
 function submit(event: React.FormEvent<HTMLFormElement>) {
   event.preventDefault();
+  if (targetStage) {
+    if (!target) {
+      setAttemptedTarget(true);
+      return;
+    }
+    setAttemptedTarget(false);
+    setTargetStage(false);
+    return;
+  }
   if (!validStep(step, profile)) {
     setAttemptedStep(step);
     return;
@@ -604,16 +672,16 @@ On `/diagnosis`:
 
 ### 10.1 Observed Responsive Layout
 In the current code:
-- Desktop: Two-column layout with sticky left sidebar (`StepProgress` and `ProfilePreview`) and main form panel.
+- Desktop: Two-column layout with sticky left sidebar rendering `StepProgress` (5 steps: Target, Current state, Academics, Preferences, Review) and `ProfilePreview` (Target, Goal, Academics, Preferences), alongside the main form panel.
 - Mobile ($< 1024\text{px}$): Single-column layout. Left sidebar is hidden via `lg:block`; sticky mobile progress card is rendered above the form panel.
 
 ### 10.2 Mobile Header & Progress Drawer
 The mobile progress header provides:
-- Step counter: `Step X of 4`.
-- Step title.
-- Step percentage (`Math.round((step / 4) * 100)%`).
-- Visual 4-segment progress bar.
-- Collapsible `<details>` drawer: *"Your profile so far · View summary"*, allowing students to inspect entered values on mobile without losing form position.
+- Step counter: `Step {flowStep} of 5`.
+- Step title: Contextual title matching active flow stage.
+- Step percentage: `Math.round((flowStep / 5) * 100)%`.
+- Visual 5-segment progress bar: 5 discrete segments indicating completed and active stages.
+- Collapsible `<details>` drawer: *"Your profile so far · [profileSummary] · View summary"*, allowing students to inspect entered values (including chosen target program) on mobile without losing form position.
 
 ### 10.3 Form Controls & Virtual Keyboard Input Modes
 - GPA and IELTS use `inputMode="decimal"` for numeric decimal entry.
@@ -684,21 +752,27 @@ In the current code:
 ### 13.1 User Journey Scenarios
 
 #### Scenario 1: Clean First-Time Visitor
-- **Given** clean browser storage.
+- **Given** clean browser storage (`loadStoredProfile()` is null, `loadSelectedProgram()` is null).
 - **When** the user loads `/onboarding`.
-- **Then** Step 1 presents required study stage, target degree (`"Bachelor"`), and intended field choices.
+- **Then** the form opens in Target Stage (`targetStage = true`, Step 01 of 05: *"Where do you want to get in?"*).
+- **When** the user selects a university and program from the verified catalog.
+- **Then** `RequirementsPreview` renders verified requirements (academic, IELTS, SAT, instruction language, application documents, deadline) with status badges (`Published`, `Needs verification`, `Not required`) and official source links, and the program ID is saved to `admission-journey:v1:selected-program`.
+- **When** the user clicks *"Continue to current state"*.
+- **Then** `targetStage` transitions to `false`, advancing to Step 1 (Direction: `currentStudyStage`, `targetDegree`, `intendedField`).
 - **When** Step 2 loads and user leaves GPA, IELTS, SAT, and activities blank.
 - **Then** no validation errors are shown; blank fields remain `null`.
-- **When** user completes Step 3 with a valid target intake and submits Step 4.
+- **When** user completes Step 3 with a valid target intake and advances to Step 4 Review.
+- **Then** the selected target is displayed in the Target review section with an `Edit` action returning to Target Stage.
+- **When** user clicks *"Analyze my profile"*.
 - **Then** `StoredProfile.completed` is set to `true`, and user is navigated to `/diagnosis`.
 
 #### Scenario 2: Returning User with Draft
-- **Given** an incomplete profile in `localStorage` at Step 2.
+- **Given** an incomplete profile in `localStorage` at Step 2 and a previously selected target in `admission-journey:v1:selected-program`.
 - **When** user navigates to `/onboarding`.
-- **Then** the form restores Step 2 with all previously entered values.
+- **Then** the form restores Step 2 with all previously entered values and maintains the selected target in profile previews.
 
 #### Scenario 3: Returning Completed User Editing Profile
-- **Given** a completed profile with `ieltsScore: 6.0`.
+- **Given** a completed profile with `ieltsScore: 6.0` and an active target selection.
 - **When** user visits `/onboarding`, edits IELTS to `7.0`, and submits Step 4.
 - **Then** `saveEditBaseline` records the baseline, `buildChangeImpact` records the delta, and `/diagnosis` reflects the updated score with Change Impact context.
 
@@ -707,14 +781,30 @@ In the current code:
 - **When** user clicks `"Continue"`.
 - **Then** navigation is blocked and inline errors are displayed.
 
+#### Scenario 5: Target Editing from Review
+- **Given** a user on Step 4 Review.
+- **When** user clicks `"Edit"` on the Target review section.
+- **Then** the form returns to Target Stage (`setTargetStage(true)`) with the current university, program, and requirements preview displayed.
+- **When** the user selects a different program and clicks `"Continue to current state"`.
+- **Then** `saveSelectedProgram` updates `admission-journey:v1:selected-program`, and the user returns to Step 1 with the updated target reflected.
+
 ### 13.2 Automated Test Coverage Alignment
-Onboarding contracts are verified by tests in `lib/onboarding.test.ts`:
-- `stepErrors(1, profile)` verifies `currentStudyStage`, `targetDegree === "Bachelor"`, and `intendedField`.
-- `stepErrors(2, profile)` verifies score ranges for `gpa`, `ieltsScore`, and `satScore`.
-- `stepErrors(3, profile)` verifies `annualBudget > 0` and `targetIntake`.
-- `stepErrors(4, profile)` verifies `targetIntake` presence before review submission.
-- `activitiesAndAchievements` is tested as optional, non-scoring context.
-- `preferredLanguage` is tested as optional, non-scoring context.
+Onboarding contracts and target handling are verified by the automated test suite:
+- **Form validation (`lib/onboarding.test.ts`)**:
+  - `stepErrors(1, profile)` verifies `currentStudyStage`, `targetDegree === "Bachelor"`, and `intendedField`.
+  - `stepErrors(2, profile)` verifies score ranges for `gpa`, `ieltsScore`, and `satScore`.
+  - `stepErrors(3, profile)` verifies `annualBudget > 0` and `targetIntake`.
+  - `stepErrors(4, profile)` verifies `targetIntake` presence before review submission.
+  - `activitiesAndAchievements` is tested as optional, non-scoring context.
+  - `preferredLanguage` is tested as optional, non-scoring context.
+- **Target persistence & isolation (`lib/storage/selection.test.ts`)**:
+  - `saveSelectedProgram()` and `loadSelectedProgram()` verify target persistence under `admission-journey:v1:selected-program`.
+  - Confirms target selection does not mutate profile inputs (`preferredCountries`, `preferredLanguage`, `activitiesAndAchievements`) or alter deterministic matching/eligibility calculations.
+  - Confirms missing or stale target IDs safely resolve to unselected (`null`).
+- **Requirements-first presentation facts (`lib/admissions/presentation.test.ts`)**:
+  - `buildTargetRequirementFacts()` verifies verified requirement extraction for academic, IELTS, SAT, language, documents, and deadline fields.
+  - Confirms status badge taxonomy (`known`, `unknown`, `not_required`).
+  - Confirms unknown requirement fields remain explicit without inference or hallucination.
 
 ---
 
