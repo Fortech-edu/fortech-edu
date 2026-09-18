@@ -7,6 +7,7 @@ import type {
   UniversityProgram,
 } from "../../types/admissions.ts";
 import { fieldsMatch } from "./scoring.ts";
+import { isScoreValid } from "../onboarding.ts";
 
 export const eligibilityLabels: Record<EligibilityStatus, string> = {
   eligible_now: "Requirements met",
@@ -162,7 +163,7 @@ const formatBudget = (profile: StudentProfile) => {
   return `${profile.budgetCurrency.toUpperCase()} ${formatNumber(profile.annualBudget)} / year`;
 };
 
-function requirementCriterion(
+export function requirementCriterion(
   key: "academic" | "ielts" | "sat",
   label: string,
   value: number | null,
@@ -205,6 +206,33 @@ function requirementCriterion(
   return value >= requirement.minimumScore
     ? { key, label, profileValue, programValue, status: "Match", detail: "Your provided score meets this published minimum." }
     : { key, label, profileValue, programValue, status: "Action needed", detail: `Your score is ${formatNumber(requirement.minimumScore - value)} below the published minimum.` };
+}
+
+export type ThresholdHintState = {
+  status: "Match" | "Action needed";
+  isGap: boolean;
+  detail: string;
+};
+
+export function resolveThresholdHint(
+  criterionKey: "academic" | "ielts" | "sat",
+  label: string,
+  value: number | null,
+  requirement: Requirement | null,
+  hasError = false,
+): ThresholdHintState | null {
+  if (hasError || value === null || !requirement || !isScoreValid(criterionKey, value)) {
+    return null;
+  }
+
+  const { status, detail } = requirementCriterion(criterionKey, label, value, requirement);
+  if (status !== "Action needed" && status !== "Match") return null;
+
+  return {
+    status,
+    isGap: status === "Action needed",
+    detail,
+  };
 }
 
 export function buildProfileProgramCriteria(

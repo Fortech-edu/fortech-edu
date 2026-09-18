@@ -1,11 +1,56 @@
 import { buildInstantDiagnosis } from "../../lib/admissions/instant-diagnosis.ts";
 import { numberOrNull, type OnboardingErrorKey } from "../../lib/onboarding.ts";
-import type {
-  ComparisonStatus,
+import {
+  resolveThresholdHint,
+  type ComparisonStatus,
 } from "../../lib/admissions/presentation.ts";
-import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
+import type { Requirement, StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 
 type CurrentStateKey = "currentStudyStage" | "gpa" | "ieltsScore" | "satScore";
+
+/**
+ * A live fact check against the selected target's published threshold, shown
+ * the moment a score is typed. Uses the exact same comparison the rest of the
+ * product runs (`requirementCriterion`), so this can never disagree with
+ * Diagnosis or Matches. It only ever renders for a concrete, published
+ * minimum and a value the student actually entered — an unknown requirement
+ * or a blank field never produces a red state. Invalid values or fields with
+ * validation errors suppress the hint until the value is valid again.
+ */
+export function ThresholdHint({
+  criterionKey,
+  label,
+  value,
+  requirement,
+  hasError = false,
+  error,
+}: {
+  criterionKey: "academic" | "ielts" | "sat";
+  label: string;
+  value: number | null;
+  requirement: Requirement | null;
+  hasError?: boolean;
+  error?: string;
+}) {
+  const hint = resolveThresholdHint(
+    criterionKey,
+    label,
+    value,
+    requirement,
+    Boolean(hasError || error),
+  );
+  if (!hint) return null;
+
+  return (
+    <p
+      className={`mt-2 flex items-start gap-1.5 text-sm font-medium leading-5 ${hint.isGap ? "text-red-700" : "text-forest-700"}`}
+      role={hint.isGap ? "alert" : undefined}
+    >
+      <span aria-hidden="true">{hint.isGap ? "●" : "✓"}</span>
+      <span>{hint.detail}</span>
+    </p>
+  );
+}
 
 const inputClass = "product-input mt-2 min-h-12 w-full border border-forest-200 bg-white px-3.5 text-base text-ink outline-none transition placeholder:text-slate-400";
 const statusStyles: Record<ComparisonStatus, string> = {
@@ -33,10 +78,12 @@ export function InstantCurrentState({
   profile,
   errors,
   onUpdate,
+  program = null,
 }: {
   profile: StudentProfile;
   errors: Partial<Record<OnboardingErrorKey, string>>;
   onUpdate: (key: CurrentStateKey, value: string | number | null) => void;
+  program?: UniversityProgram | null;
 }) {
   return (
     <div className="space-y-0">
@@ -63,18 +110,21 @@ export function InstantCurrentState({
           <p id="instant-gpa-help" className="mt-1 text-sm leading-5 text-muted">Supported 0–4 scale.</p>
           <input id="instant-gpa" className={inputClass} type="number" min="0" max="4" step="0.01" inputMode="decimal" placeholder="3.5" value={profile.gpa ?? ""} onChange={(event) => onUpdate("gpa", numberOrNull(event.target.value))} aria-describedby={`instant-gpa-help${errors.gpa ? " instant-gpa-error" : ""}`} aria-invalid={Boolean(errors.gpa)} />
           <ErrorText id="instant-gpa-error">{errors.gpa}</ErrorText>
+          <ThresholdHint criterionKey="academic" label="Academic requirement" value={profile.gpa} requirement={program?.academicRequirement ?? null} error={errors.gpa} />
         </div>
         <div className="field-group p-5 sm:p-6">
           <label className="block text-sm font-semibold text-forest-900" htmlFor="instant-ielts">IELTS <span className="font-normal text-muted">Optional</span></label>
           <p id="instant-ielts-help" className="mt-1 text-sm leading-5 text-muted">Leave blank if not taken.</p>
           <input id="instant-ielts" className={inputClass} type="number" min="0" max="9" step="0.5" inputMode="decimal" placeholder="6.0" value={profile.ieltsScore ?? ""} onChange={(event) => onUpdate("ieltsScore", numberOrNull(event.target.value))} aria-describedby={`instant-ielts-help${errors.ieltsScore ? " instant-ielts-error" : ""}`} aria-invalid={Boolean(errors.ieltsScore)} />
           <ErrorText id="instant-ielts-error">{errors.ieltsScore}</ErrorText>
+          <ThresholdHint criterionKey="ielts" label="IELTS" value={profile.ieltsScore} requirement={program?.ieltsRequirement ?? null} error={errors.ieltsScore} />
         </div>
         <div className="field-group p-5 sm:p-6">
           <label className="block text-sm font-semibold text-forest-900" htmlFor="instant-sat">SAT <span className="font-normal text-muted">Optional</span></label>
           <p id="instant-sat-help" className="mt-1 text-sm leading-5 text-muted">Leave blank if not taken.</p>
           <input id="instant-sat" className={inputClass} type="number" min="400" max="1600" step="10" inputMode="numeric" placeholder="1200" value={profile.satScore ?? ""} onChange={(event) => onUpdate("satScore", numberOrNull(event.target.value))} aria-describedby={`instant-sat-help${errors.satScore ? " instant-sat-error" : ""}`} aria-invalid={Boolean(errors.satScore)} />
           <ErrorText id="instant-sat-error">{errors.satScore}</ErrorText>
+          <ThresholdHint criterionKey="sat" label="SAT" value={profile.satScore} requirement={program?.satRequirement ?? null} error={errors.satScore} />
         </div>
       </div>
     </div>
