@@ -156,8 +156,8 @@ export function isFactuallySafe(
   const text = collectText(output).toLowerCase();
   if (/acceptance rate|admission probability|chance of admission|guaranteed|scholarship|will be admitted|will get in/.test(text)) return false;
 
-  const knownNumbers = new Set((JSON.stringify(input).match(/\d+(?:\.\d+)?/g) ?? []).map(normalizeNumber));
-  const outputNumbers = text.match(/\d+(?:\.\d+)?/g) ?? [];
+  const knownNumbers = new Set((JSON.stringify(input).match(/\d[\d,]*(?:\.\d+)?/g) ?? []).map(normalizeNumber));
+  const outputNumbers = text.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
   if (outputNumbers.some((number) => !knownNumbers.has(normalizeNumber(number)))) return false;
 
   if ("recommendation" in input) {
@@ -205,7 +205,7 @@ function collectText(output: DiagnosisAIOutput | RecommendationAIOutput | Roadma
 }
 
 function normalizeNumber(value: string) {
-  return String(Number(value));
+  return String(Number(value.replaceAll(",", "")));
 }
 
 function requirementUnknown(requirement: UniversityProgram["ieltsRequirement"]) {
@@ -215,5 +215,5 @@ function requirementUnknown(requirement: UniversityProgram["ieltsRequirement"]) 
 function unknownMentionsAreSafe(text: string, unknown: boolean, topic: RegExp) {
   if (!unknown) return true;
   const mentions = text.split(/[.!?]/).filter((sentence) => topic.test(sentence));
-  return mentions.every((sentence) => /unknown|verify|confirm|not provided|not available/.test(sentence));
+  return mentions.every((sentence) => /unknown|verif(?:y|ication)|confirm|not (?:provided|available|specified|listed)/.test(sentence));
 }
