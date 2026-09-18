@@ -37,7 +37,14 @@ const aiProfile = toAIProfile(profile);
 const program = programs[0];
 const assessed = assessProgram(profile, program);
 const targetDiagnosis = diagnoseTarget(profile, program)!;
-const service = createAIService(provider, { timeoutMs: 30_000 });
+const logs: string[] = [];
+const service = createAIService(provider, {
+  timeoutMs: 30_000,
+  log: (message) => {
+    logs.push(message);
+    console.info(message);
+  },
+});
 
 const diagnosis = await service.generateDiagnosis(toDiagnosisAIInput(profile, program, targetDiagnosis));
 const explanation = await service.generateRecommendationExplanation({
@@ -54,7 +61,11 @@ const explanation = await service.generateRecommendationExplanation({
 });
 
 if (providerCalls !== 2 || diagnosis.source !== "ai" || explanation.source !== "ai") {
-  throw new Error(`AI smoke failed: calls=${providerCalls} diagnosis=${diagnosis.source} explanation=${explanation.source}`);
+  const failureLines = logs.filter((line) => /provider_(http_error|invalid_response|timeout|unsafe_output)/.test(line));
+  throw new Error(
+    `AI smoke failed: calls=${providerCalls} diagnosis=${diagnosis.source} explanation=${explanation.source}` +
+      (failureLines.length ? `\n${failureLines.join("\n")}` : ""),
+  );
 }
 
 console.log("AI smoke passed: provider calls=2, diagnosis=ai, explanation=ai");

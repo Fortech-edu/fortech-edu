@@ -82,7 +82,8 @@ export function createAIService(
       if (timedOut || (error instanceof Error && error.message === "AIRequestTimeout")) {
         log(`AI ${kind}: provider_timeout`);
       } else if (error instanceof AIProviderError) {
-        log(`AI ${kind}: ${error.failure}${error.status ? ` status=${error.status}` : ""}`);
+        const status = error.status ? ` status=${error.status}` : "";
+        log(`AI ${kind}: ${error.failure}${status}${error.detail ? ` ${error.detail}` : ""}`);
       } else {
         log(`AI ${kind}: provider_http_error`);
       }
