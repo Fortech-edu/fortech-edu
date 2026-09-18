@@ -6,7 +6,9 @@ import type { StudentProfile } from "../types/admissions.ts";
 import { evaluateEligibility } from "./admissions/eligibility.ts";
 import { calculateFit } from "./admissions/scoring.ts";
 import {
+  applyTargetProfileDefaults,
   emptyProfile,
+  inferFieldFromTarget,
   numberOrNull,
   stepErrors,
   toggleCountry,
@@ -245,4 +247,122 @@ test("transferred values use the existing Fit Score and eligibility rules", () =
 
   assert.deepEqual(calculateFit(transferred, program), calculateFit(directlyEntered, program));
   assert.equal(evaluateEligibility(transferred, program), evaluateEligibility(directlyEntered, program));
+});
+
+test("inferFieldFromTarget maps all catalog fields deterministically into Computer Science or Business", () => {
+  assert.equal(inferFieldFromTarget("Computer Science"), "Computer Science");
+  assert.equal(inferFieldFromTarget("Software Engineering"), "Computer Science");
+  assert.equal(inferFieldFromTarget("Data Science"), "Computer Science");
+  assert.equal(inferFieldFromTarget("Information Technology"), "Computer Science");
+
+  assert.equal(inferFieldFromTarget("Business"), "Business");
+  assert.equal(inferFieldFromTarget("Business Administration"), "Business");
+  assert.equal(inferFieldFromTarget("International Business"), "Business");
+  assert.equal(inferFieldFromTarget("Finance"), "Business");
+  assert.equal(inferFieldFromTarget("Business Analytics"), "Business");
+
+  assert.equal(inferFieldFromTarget(""), null);
+  assert.equal(inferFieldFromTarget(null), null);
+  assert.equal(inferFieldFromTarget(undefined), null);
+  assert.equal(inferFieldFromTarget("Unknown Subject"), null);
+});
+
+test("applyTargetProfileDefaults infers targetDegree and intendedField while preserving existing values", () => {
+  const csProgram = getProgramById("aitu-computer-science")!;
+  const busProgram = getProgramById("lut-digital-business")!;
+
+  const defaultedCs = applyTargetProfileDefaults(emptyProfile, csProgram);
+  assert.equal(defaultedCs.targetDegree, "Bachelor");
+  assert.equal(defaultedCs.intendedField, "Computer Science");
+
+  const defaultedBus = applyTargetProfileDefaults(emptyProfile, busProgram);
+  assert.equal(defaultedBus.targetDegree, "Bachelor");
+  assert.equal(defaultedBus.intendedField, "Business");
+
+  // Preserves existing explicit targetDegree / intendedField
+  const explicit = profile({
+    targetDegree: "Bachelor",
+    intendedField: "Business",
+  });
+  const preserved = applyTargetProfileDefaults(explicit, csProgram);
+  assert.equal(preserved.targetDegree, "Bachelor");
+  assert.equal(preserved.intendedField, "Business");
+
+  // Null target returns profile unchanged
+  assert.deepEqual(applyTargetProfileDefaults(explicit, null), explicit);
+});
+
+test("first-time onboarding transitions directly to step 3 without asking academic scores or direction again", () => {
+  const program = getProgramById("lut-software-systems-engineering")!;
+  const instantCurrent: StudentProfile = {
+    ...emptyProfile,
+    currentStudyStage: "Grade 11",
+    gpa: 3.8,
+    ieltsScore: 7.0,
+    satScore: 1350,
+  };
+
+  // 1. Transfer instant profile scores & stage
+  const transferred = transferInstantProfile(emptyProfile, instantCurrent);
+  // 2. Apply target defaults from chosen program
+  const full = applyTargetProfileDefaults(transferred, program);
+
+  // Verifies that direction (Step 1) is already satisfied
+  assert.equal(full.currentStudyStage, "Grade 11");
+  assert.equal(full.targetDegree, "Bachelor");
+  assert.equal(full.intendedField, "Computer Science");
+  assert.equal(validStep(1, full), true);
+
+  // Verifies that academics (Step 2) are already satisfied
+  assert.equal(full.gpa, 3.8);
+  assert.equal(full.ieltsScore, 7.0);
+  assert.equal(full.satScore, 1350);
+  assert.equal(validStep(2, full), true);
+
+  // Step 3 requires only target intake before moving to review
+  assert.equal(validStep(3, full), false);
+  const readyForReview = { ...full, targetIntake: "Fall 2027" };
+  assert.equal(validStep(3, readyForReview), true);
+  assert.equal(validStep(4, readyForReview), true);
+});
+
+test("blank academic values remain valid intentional unknowns without blocking transition", () => {
+  const program = getProgramById("aitu-computer-science")!;
+  const instantCurrent: StudentProfile = {
+    ...emptyProfile,
+    currentStudyStage: "Grade 10",
+    gpa: null,
+    ieltsScore: null,
+    satScore: null,
+  };
+
+  const transferred = transferInstantProfile(emptyProfile, instantCurrent);
+  const full = applyTargetProfileDefaults(transferred, program);
+
+  assert.equal(full.currentStudyStage, "Grade 10");
+  assert.equal(full.gpa, null);
+  assert.equal(full.ieltsScore, null);
+  assert.equal(full.satScore, null);
+
+  // Blanks remain valid and unknown
+  assert.equal(validStep(2, full), true);
+});
+
+test("onboarding-form displays academic baseline confirmation and unified 5-step progress", () => {
+  const source = readFileSync(new URL("../components/journey/onboarding-form.tsx", import.meta.url), "utf8");
+
+  // Step 3 shows baseline & target confirmation card
+  assert.ok(source.includes("Academic baseline & target recorded"));
+  assert.ok(source.includes("Edit academics"));
+
+  // Unified 5-step labels for target journey
+  assert.ok(source.includes('"Target", "Current state", "Instant diagnosis", "Missing details", "Review"'));
+
+  // Dynamic header step count without hardcoded "05"
+  assert.ok(source.includes('Step {String(flowStep).padStart(2, "0")} of {String(flowLabels.length).padStart(2, "0")}'));
+
+  // Section edit returns to review
+  assert.ok(source.includes("editingFromReview"));
+  assert.ok(source.includes('"Save and return to review"'));
+  assert.ok(source.includes('"Back to review"'));
 });
