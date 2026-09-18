@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "ai:smoke": "node --env-file-if-exists=.env.local --experimental-strip-types scripts/ai-smoke.ts",
-    "test": "node --test lib/admissions/recommend.test.ts lib/admissions/diagnosis.test.ts lib/admissions/change-impact.test.ts lib/admissions/change-impact-presentation.test.ts lib/admissions/matches.test.ts lib/admissions/presentation.test.ts lib/admissions/roadmap.test.ts lib/ai/service.test.ts lib/storage/change-impact.test.ts lib/storage/selection.test.ts lib/storage/progress.test.ts lib/supabase/sync.test.ts lib/onboarding.test.ts"
+    "test": "node --test lib/admissions/recommend.test.ts lib/admissions/diagnosis.test.ts lib/admissions/change-impact.test.ts lib/admissions/change-impact-presentation.test.ts lib/admissions/instant-diagnosis.test.ts lib/admissions/matches.test.ts lib/admissions/presentation.test.ts lib/admissions/roadmap.test.ts lib/ai/service.test.ts lib/storage/change-impact.test.ts lib/storage/selection.test.ts lib/storage/progress.test.ts lib/supabase/sync.test.ts lib/onboarding.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

@@ -78,6 +78,7 @@ test("IELTS comparison preserves met, below, missing, unknown, and not-required 
   assert.equal(criterion({ ...profile, ieltsScore: 6.5 }, program, "ielts").status, "Match");
   assert.equal(criterion({ ...profile, ieltsScore: 7 }, program, "ielts").status, "Match");
   assert.equal(criterion(profile, program, "ielts").status, "Action needed");
+  assert.equal(criterion({ ...profile, ieltsScore: null }, program, "ielts").status, "Needs verification");
   assert.match(criterion({ ...profile, ieltsScore: null }, program, "ielts").detail, /not provided/);
   assert.equal(criterion(profile, { ...program, ieltsRequirement: null }, "ielts").status, "Needs verification");
   assert.equal(criterion(profile, { ...program, ieltsRequirement: { label: "IELTS", minimumScore: null, isRequired: false, notes: null } }, "ielts").status, "Not required");
@@ -86,7 +87,7 @@ test("IELTS comparison preserves met, below, missing, unknown, and not-required 
 test("SAT comparison separates required, not required, unknown, and missing score", () => {
   const optional = byId("northbridge-cs");
   const required = { ...optional, satRequirement: { label: "SAT", minimumScore: 1200, isRequired: true, notes: null } };
-  assert.equal(criterion(profile, required, "sat").status, "Action needed");
+  assert.equal(criterion(profile, required, "sat").status, "Needs verification");
   assert.equal(criterion({ ...profile, satScore: 1300 }, required, "sat").status, "Match");
   assert.equal(criterion(profile, optional, "sat").status, "Not required");
   assert.equal(criterion(profile, { ...optional, satRequirement: null }, "sat").status, "Needs verification");

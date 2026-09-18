@@ -24,7 +24,10 @@ import {
   saveRecentChangeImpact,
 } from "../../lib/storage/change-impact.ts";
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
+import { InstantCurrentState, InstantDiagnosisResult } from "./instant-diagnosis.tsx";
 import { TargetStep } from "./target-step.tsx";
+
+type EntryStage = "target" | "current" | "diagnosis" | "onboarding";
 
 const stepDetails = [
   ["Where are you today?", "Add your current stage and study direction after reviewing the target requirements."],
@@ -109,9 +112,7 @@ function FieldCard({ children, tone = "plain" }: { children: ReactNode; tone?: "
   );
 }
 
-function StepProgress({ step }: { step: number }) {
-  const labels = ["Target", "Current state", "Academics", "Preferences", "Review"];
-
+function StepProgress({ step, labels }: { step: number; labels: readonly string[] }) {
   return (
     <nav aria-label="Onboarding progress">
       <ol className="space-y-1">
@@ -204,8 +205,9 @@ export function OnboardingForm() {
 function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile | null; initialTarget: UniversityProgram | null }) {
   const router = useRouter();
   const [profile, setProfile] = useState<StudentProfile>(initial?.profile ?? emptyProfile);
+  const [instantProfile, setInstantProfile] = useState<StudentProfile>({ ...emptyProfile });
   const [target, setTarget] = useState<UniversityProgram | null>(initialTarget);
-  const [targetStage, setTargetStage] = useState(true);
+  const [entryStage, setEntryStage] = useState<EntryStage>("target");
   const [step, setStep] = useState(initial?.step ?? 1);
   const [completed, setCompleted] = useState(initial?.completed ?? false);
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
@@ -241,13 +243,22 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (targetStage) {
+    if (entryStage === "target") {
       if (!target) {
         setAttemptedTarget(true);
         return;
       }
       setAttemptedTarget(false);
-      setTargetStage(false);
+      setEntryStage("current");
+      return;
+    }
+    if (entryStage === "current") {
+      if (!validStep(2, instantProfile)) return;
+      setEntryStage("diagnosis");
+      return;
+    }
+    if (entryStage === "diagnosis") {
+      setEntryStage("onboarding");
       return;
     }
     if (!validStep(step, profile)) {
@@ -280,24 +291,33 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
     router.push("/diagnosis");
   }
 
-  const [title, description] = targetStage
+  const [title, description] = entryStage === "target"
     ? ["Where do you want to get in?", "Choose a real program target and review its known requirements before entering your current state."]
-    : stepDetails[step - 1];
-  const flowStep = targetStage ? 1 : step + 1;
+    : entryStage === "current"
+      ? ["Where are you today?", "Add only the current values you know. You can see a useful comparison without completing the full profile."]
+      : entryStage === "diagnosis"
+        ? ["Instant Diagnosis", "See what is ready, what is confirmed, what remains unknown, and what to do next."]
+        : stepDetails[step - 1];
+  const flowLabels = entryStage === "onboarding"
+    ? ["Profile", "Academics", "Preferences", "Review"]
+    : ["Target", "Current state", "Diagnosis"];
+  const flowStep = entryStage === "target" ? 1 : entryStage === "current" ? 2 : entryStage === "diagnosis" ? 3 : step;
   const errors = stepErrors(step, profile);
+  const instantErrors = stepErrors(2, instantProfile);
   const showRequiredErrors = attemptedStep === step;
   const unsupportedCountries = profile.preferredCountries.filter((country) => !countries.includes(country));
   const availableCurrencies = [...new Set([...currencies, ...(profile.budgetCurrency ? [profile.budgetCurrency] : [])])];
   const availableLanguages = [...new Set([...languages, ...(profile.preferredLanguage ? [profile.preferredLanguage] : [])])];
+  const previewProfile = entryStage === "onboarding" ? profile : instantProfile;
 
   return (
     <form onSubmit={submit} noValidate className="onboarding-layout grid items-start gap-8 lg:grid-cols-[minmax(17rem,0.72fr)_minmax(0,1.6fr)] lg:gap-12">
       <aside className="sticky top-6 hidden space-y-6 lg:block">
         <div className="editorial-section p-4">
-          <StepProgress step={flowStep} />
+          <StepProgress step={flowStep} labels={flowLabels} />
         </div>
         <div className="accent-section p-6">
-          <ProfilePreview profile={profile} target={target} />
+          <ProfilePreview profile={previewProfile} target={target} />
           <p className="mt-5 border-t border-sand-300 pt-4 text-xs leading-5 text-muted">
             We use verified program facts for matching. Missing information stays unknown.
           </p>
@@ -308,19 +328,19 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
         <div className="editorial-section mb-5 p-4 lg:hidden">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-forest-700">Step {flowStep} of 5</p>
+              <p className="text-sm font-semibold text-forest-700">Step {flowStep} of {flowLabels.length}</p>
               <p className="mt-0.5 font-semibold text-forest-900">{title}</p>
             </div>
-            <span className="text-sm text-muted">{Math.round((flowStep / 5) * 100)}%</span>
+            <span className="text-sm text-muted">{Math.round((flowStep / flowLabels.length) * 100)}%</span>
           </div>
-          <div className="mt-3 grid grid-cols-5 gap-1.5" aria-label={`Step ${flowStep} of 5`} role="progressbar" aria-valuemin={1} aria-valuemax={5} aria-valuenow={flowStep}>
-            {[1, 2, 3, 4, 5].map((item) => <span key={item} className={`h-1.5 rounded-full ${item <= flowStep ? "bg-forest-700" : "bg-forest-100"}`} />)}
+          <div className="mt-3 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${flowLabels.length}, minmax(0, 1fr))` }} aria-label={`Step ${flowStep} of ${flowLabels.length}`} role="progressbar" aria-valuemin={1} aria-valuemax={flowLabels.length} aria-valuenow={flowStep}>
+            {flowLabels.map((label, index) => <span key={label} className={`h-1.5 rounded-full ${index < flowStep ? "bg-forest-700" : "bg-forest-100"}`} />)}
           </div>
           <details className="mt-4 border-t border-forest-100 pt-3">
             <summary className="min-h-11 cursor-pointer rounded-lg py-2 text-sm font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-              Your profile so far <span className="mt-1 block font-normal text-muted">{profileSummary(profile)} · View summary</span>
+              Your profile so far <span className="mt-1 block font-normal text-muted">{profileSummary(previewProfile)} · View summary</span>
             </summary>
-            <div className="mt-3 rounded-xl bg-sand-100/70 p-4"><ProfilePreview profile={profile} target={target} /></div>
+            <div className="mt-3 rounded-xl bg-sand-100/70 p-4"><ProfilePreview profile={previewProfile} target={target} /></div>
           </details>
         </div>
 
@@ -331,10 +351,14 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
             <p className="mt-2 max-w-2xl leading-7 text-muted">{description}</p>
           </header>
 
-          <div key={targetStage ? "target" : step} className="onboarding-step-content space-y-0 bg-[var(--surface)] px-5 py-2 sm:px-8 sm:py-4">
-            {targetStage ? <TargetStep selected={target} attempted={attemptedTarget} onSelect={(program) => { setTarget(program); setAttemptedTarget(false); saveSelectedProgram(program?.id ?? null); }} /> : null}
+          <div key={entryStage === "onboarding" ? step : entryStage} className="onboarding-step-content space-y-0 bg-[var(--surface)] px-5 py-2 sm:px-8 sm:py-4">
+            {entryStage === "target" ? <TargetStep selected={target} attempted={attemptedTarget} onSelect={(program) => { setTarget(program); setAttemptedTarget(false); saveSelectedProgram(program?.id ?? null); }} /> : null}
 
-            {!targetStage && step === 1 ? (
+            {entryStage === "current" ? <InstantCurrentState profile={instantProfile} errors={instantErrors} onUpdate={(key, value) => setInstantProfile((current) => ({ ...current, [key]: value }))} /> : null}
+
+            {entryStage === "diagnosis" && target ? <InstantDiagnosisResult profile={instantProfile} program={target} /> : null}
+
+            {entryStage === "onboarding" && step === 1 ? (
               <>
                 <FieldCard>
                   <fieldset aria-describedby={showRequiredErrors && errors.currentStudyStage ? "study-stage-help study-stage-error" : "study-stage-help"}>
@@ -383,7 +407,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
               </>
             ) : null}
 
-            {!targetStage && step === 2 ? (
+            {entryStage === "onboarding" && step === 2 ? (
               <>
                 <div className="rounded-2xl border border-sand-300 bg-sand-100 px-4 py-3 text-sm leading-6 text-forest-900">
                   <strong>Blank means unknown.</strong> We never turn a missing score into a pass or a fail.
@@ -414,7 +438,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
               </>
             ) : null}
 
-            {!targetStage && step === 3 ? (
+            {entryStage === "onboarding" && step === 3 ? (
               <>
                 <FieldCard>
                   <fieldset>
@@ -481,14 +505,14 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
               </>
             ) : null}
 
-            {!targetStage && step === 4 ? (
+            {entryStage === "onboarding" && step === 4 ? (
               <div className="space-y-5">
                 <div>
                   <h2 className="text-xl font-semibold text-forest-900 sm:text-2xl">Your admission profile is ready</h2>
                   <p className="mt-2 leading-6 text-muted">Review the information that will shape your deterministic analysis.</p>
                 </div>
 
-                <ReviewSection title="Target" onEdit={() => setTargetStage(true)}>
+                <ReviewSection title="Target" onEdit={() => setEntryStage("target")}>
                   <p className="text-lg font-semibold text-ink">{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}</p>
                   <p className="mt-1 text-sm text-muted">{target?.country ?? "Country unknown"}</p>
                 </ReviewSection>
@@ -536,11 +560,11 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
           </div>
 
           <footer className="flex flex-col-reverse gap-3 border-t border-forest-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <button type="button" onClick={() => { setCompleted(false); setAttemptedStep(null); if (step === 1) setTargetStage(true); else setStep((current) => current - 1); }} disabled={targetStage} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="button" onClick={() => { setCompleted(false); setAttemptedStep(null); if (entryStage === "current") setEntryStage("target"); else if (entryStage === "diagnosis") setEntryStage("current"); else if (entryStage === "onboarding" && step === 1) setEntryStage("diagnosis"); else setStep((current) => current - 1); }} disabled={entryStage === "target"} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-40">
               Back
             </button>
             <button type="submit" className="min-h-12 rounded-full bg-forest-700 px-7 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-              {targetStage ? "Continue to current state" : step === 4 ? "Analyze my profile" : "Continue"}
+              {entryStage === "target" ? "Continue to current state" : entryStage === "current" ? "Show instant diagnosis" : entryStage === "diagnosis" ? "Build my full plan" : step === 4 ? "Analyze my profile" : "Continue"}
             </button>
           </footer>
         </section>
