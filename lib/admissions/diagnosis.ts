@@ -37,6 +37,39 @@ export type TargetDiagnosis = {
   roadmapPreview: RoadmapItem[];
 };
 
+export type DiagnosisSummary = {
+  requirementCounts: {
+    match: number;
+    actionNeeded: number;
+    needsVerification: number;
+  };
+  biggestConfirmedGap: ProfileProgramCriterion | null;
+  verificationCount: number;
+  verificationPreview: DiagnosisVerificationItem[];
+  nextAction: InstantDiagnosisAction | null;
+};
+
+/** Presentation-only summary of the existing deterministic diagnosis. */
+export function buildDiagnosisSummary(diagnosis: TargetDiagnosis): DiagnosisSummary {
+  const requirementCounts = { match: 0, actionNeeded: 0, needsVerification: 0 };
+
+  for (const criterion of diagnosis.requirementCoverage) {
+    if (criterion.status === "Match") requirementCounts.match++;
+    if (criterion.status === "Action needed") requirementCounts.actionNeeded++;
+    if (criterion.status === "Needs verification" || criterion.status === "Not comparable") {
+      requirementCounts.needsVerification++;
+    }
+  }
+
+  return {
+    requirementCounts,
+    biggestConfirmedGap: diagnosis.biggestGaps[0] ?? null,
+    verificationCount: diagnosis.unknowns.length,
+    verificationPreview: diagnosis.unknowns.slice(0, 3),
+    nextAction: diagnosis.priorities[0] ?? null,
+  };
+}
+
 export function diagnoseProfile(profile: StudentProfile): Diagnosis {
   const strengths: string[] = [];
   const gaps: string[] = [];

@@ -8,7 +8,7 @@ import type {
   StudentProfile,
   UniversityProgram,
 } from "../../types/admissions.ts";
-import { buildChangeImpact, buildTargetChangeImpact, buildTargetPlanImpact, hasMeaningfulImpact } from "./change-impact.ts";
+import { buildChangeImpact, buildTargetChangeImpact, buildTargetPlanImpact, buildTargetPlanImpactForEdit, hasMeaningfulImpact } from "./change-impact.ts";
 import { recommendPrograms } from "./recommend.ts";
 
 const profile: StudentProfile = {
@@ -566,6 +566,23 @@ test("a target change records the identity change without fabricating cross-targ
 
   const impact = buildChangeImpact(profile, profile, [], []);
   assert.equal(hasMeaningfulImpact({ ...impact, targetPlan: plan }), true);
+});
+
+test("a legacy baseline with an unknown previous target cannot fabricate target-plan impact", () => {
+  const target = programs.find(({ id }) => id === "utwente-technical-computer-science")!;
+  const before = { ...profile, ieltsScore: 5.5 };
+  const after = { ...profile, ieltsScore: 6.5 };
+  const recommendationImpact = buildChangeImpact(
+    before,
+    after,
+    recommendPrograms(before, programs),
+    recommendPrograms(after, programs),
+  );
+
+  assert.equal(buildTargetPlanImpactForEdit(before, after, null, target), undefined);
+  assert.equal("targetPlan" in recommendationImpact, false);
+  assert.equal(recommendationImpact.programChanges.length > 0, true);
+  assert.equal(hasMeaningfulImpact(recommendationImpact), true);
 });
 
 test("same-target comparisons never carry a target-change record", () => {
