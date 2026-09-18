@@ -736,8 +736,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                     setEntryStage("target");
                   }}
                 >
-                  <p className="text-lg font-bold text-ink">{target?.universityName ?? "Not selected"}</p>
-                  {target ? <p className="mt-1 font-semibold text-brand">{target.programName}</p> : null}
+                  <p className="text-lg font-semibold text-ink">{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}</p>
                   <p className="mt-1 text-sm text-muted">{target?.country ?? "Country unknown"}</p>
                 </ReviewSection>
 
