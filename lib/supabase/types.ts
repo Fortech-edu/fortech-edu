@@ -1,11 +1,12 @@
 import type { StudentProfile } from "../../types/admissions.ts";
+import type { OnboardingFlowStage } from "../storage/profile.ts";
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type PersistedStudentProfile = Omit<
   StudentProfile,
   "fullName" | "nationality" | "countryOfResidence"
->;
+> & { flowStage?: OnboardingFlowStage };
 
 export type Database = {
   public: {

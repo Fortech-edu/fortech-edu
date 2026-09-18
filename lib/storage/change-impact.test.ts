@@ -13,6 +13,7 @@ import {
   saveEditBaseline,
   saveRecentChangeImpact,
 } from "./change-impact.ts";
+import { parseStoredProfile } from "./profile.ts";
 
 const profile: StudentProfile = {
   fullName: null,
@@ -67,6 +68,21 @@ test("edit baseline and recent impact survive navigation in the same session", (
   assert.equal(saveRecentChangeImpact(impact, storage, 1000), true);
   assert.deepEqual(loadRecentChangeImpact(storage, 1001), impact);
   assert.deepEqual(loadRecentChangeImpact(storage, 1002), impact);
+});
+
+test("a restored completed profile remains the edit baseline", () => {
+  const storage = new MemoryStorage();
+  const restored = parseStoredProfile(JSON.stringify({
+    version: 1,
+    profile,
+    step: 4,
+    completed: true,
+    updatedAt: "2026-09-18T00:00:00.000Z",
+  }));
+
+  assert.equal(restored?.flowStage, "onboarding");
+  assert.equal(saveEditBaseline(restored!.profile, storage), true);
+  assert.deepEqual(loadEditBaseline(storage), restored!.profile);
 });
 
 test("empty impact remains valid but contains no recommendation changes", () => {

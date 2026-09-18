@@ -4,17 +4,26 @@ import type { StorageWriteOptions } from "./sync-events.ts";
 
 export const PROFILE_STORAGE_KEY = "admission-journey:v1:profile";
 
+export type OnboardingFlowStage = "target" | "current" | "diagnosis" | "onboarding";
+
 export type StoredProfile = {
   version: 1;
   profile: StudentProfile;
   step: number;
   completed: boolean;
+  flowStage?: OnboardingFlowStage;
   updatedAt: string;
+};
+
+type ProfileWriteOptions = StorageWriteOptions & {
+  flowStage?: OnboardingFlowStage;
 };
 
 const isNullableString = (value: unknown) => value === null || typeof value === "string";
 const isNullableNumber = (value: unknown) =>
   value === null || (typeof value === "number" && Number.isFinite(value));
+export const isOnboardingFlowStage = (value: unknown): value is OnboardingFlowStage =>
+  value === "target" || value === "current" || value === "diagnosis" || value === "onboarding";
 
 export function isStudentProfile(value: unknown): value is StudentProfile {
   if (typeof value !== "object" || value === null) return false;
@@ -50,6 +59,7 @@ function parseStoredProfileValue(value: unknown): StoredProfile | null {
     Number(stored.step) >= 1 &&
     Number(stored.step) <= 4 &&
     typeof stored.completed === "boolean" &&
+    (stored.flowStage === undefined || isOnboardingFlowStage(stored.flowStage)) &&
     isStudentProfile(stored.profile)
   )) return null;
 
@@ -67,6 +77,7 @@ function parseStoredProfileValue(value: unknown): StoredProfile | null {
     },
     step: Number(stored.step),
     completed: stored.completed,
+    flowStage: stored.flowStage ?? "onboarding",
     updatedAt,
   };
 }
@@ -94,7 +105,7 @@ export function saveStoredProfile(
   profile: StudentProfile,
   step: number,
   completed: boolean,
-  options: StorageWriteOptions = {},
+  options: ProfileWriteOptions = {},
 ) {
   if (typeof window === "undefined") return false;
 
@@ -104,6 +115,7 @@ export function saveStoredProfile(
       profile,
       step,
       completed,
+      flowStage: options.flowStage ?? "onboarding",
       updatedAt: options.updatedAt ?? new Date().toISOString(),
     };
     window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(value));

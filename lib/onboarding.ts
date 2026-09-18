@@ -43,6 +43,19 @@ export function toggleCountry(profile: StudentProfile, country: string): Student
   };
 }
 
+export function transferInstantProfile(
+  profile: StudentProfile,
+  instantProfile: StudentProfile,
+): StudentProfile {
+  return {
+    ...profile,
+    currentStudyStage: instantProfile.currentStudyStage ?? profile.currentStudyStage,
+    gpa: instantProfile.gpa ?? profile.gpa,
+    ieltsScore: instantProfile.ieltsScore ?? profile.ieltsScore,
+    satScore: instantProfile.satScore ?? profile.satScore,
+  };
+}
+
 export function stepErrors(step: number, profile: StudentProfile) {
   const errors: Partial<Record<OnboardingErrorKey, string>> = {};
 

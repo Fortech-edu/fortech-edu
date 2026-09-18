@@ -10,11 +10,12 @@ import {
   numberOrNull,
   stepErrors,
   toggleCountry,
+  transferInstantProfile,
   validStep,
 } from "../../lib/onboarding.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadStoredProfile, saveStoredProfile } from "../../lib/storage/profile.ts";
-import type { StoredProfile } from "../../lib/storage/profile.ts";
+import type { OnboardingFlowStage, StoredProfile } from "../../lib/storage/profile.ts";
 import { loadSelectedProgram, saveSelectedProgram } from "../../lib/storage/selection.ts";
 import {
   clearEditBaseline,
@@ -26,8 +27,6 @@ import {
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 import { InstantCurrentState, InstantDiagnosisResult } from "./instant-diagnosis.tsx";
 import { TargetStep } from "./target-step.tsx";
-
-type EntryStage = "target" | "current" | "diagnosis" | "onboarding";
 
 const stepDetails = [
   ["Where are you today?", "Add your current stage and study direction after reviewing the target requirements."],
@@ -205,9 +204,15 @@ export function OnboardingForm() {
 function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile | null; initialTarget: UniversityProgram | null }) {
   const router = useRouter();
   const [profile, setProfile] = useState<StudentProfile>(initial?.profile ?? emptyProfile);
-  const [instantProfile, setInstantProfile] = useState<StudentProfile>({ ...emptyProfile });
+  const [instantProfile, setInstantProfile] = useState<StudentProfile>({
+    ...emptyProfile,
+    currentStudyStage: initial?.profile.currentStudyStage ?? null,
+    gpa: initial?.profile.gpa ?? null,
+    ieltsScore: initial?.profile.ieltsScore ?? null,
+    satScore: initial?.profile.satScore ?? null,
+  });
   const [target, setTarget] = useState<UniversityProgram | null>(initialTarget);
-  const [entryStage, setEntryStage] = useState<EntryStage>("target");
+  const [entryStage, setEntryStage] = useState<OnboardingFlowStage>(initial?.flowStage ?? "target");
   const [step, setStep] = useState(initial?.step ?? 1);
   const [completed, setCompleted] = useState(initial?.completed ?? false);
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
@@ -227,8 +232,13 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
       mounted.current = true;
       return;
     }
-    saveStoredProfile(profile, step, completed);
-  }, [completed, profile, step]);
+    saveStoredProfile(
+      entryStage === "onboarding" ? profile : transferInstantProfile(profile, instantProfile),
+      step,
+      completed,
+      { flowStage: entryStage },
+    );
+  }, [completed, entryStage, instantProfile, profile, step]);
 
   function update<K extends keyof StudentProfile>(key: K, value: StudentProfile[K]) {
     setCompleted(false);
@@ -258,6 +268,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
       return;
     }
     if (entryStage === "diagnosis") {
+      setProfile((current) => transferInstantProfile(current, instantProfile));
       setEntryStage("onboarding");
       return;
     }

@@ -1,8 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { getProgramById } from "../data/programs.ts";
 import type { StudentProfile } from "../types/admissions.ts";
-import { emptyProfile, numberOrNull, stepErrors, toggleCountry, validStep } from "./onboarding.ts";
+import { evaluateEligibility } from "./admissions/eligibility.ts";
+import { calculateFit } from "./admissions/scoring.ts";
+import {
+  emptyProfile,
+  numberOrNull,
+  stepErrors,
+  toggleCountry,
+  transferInstantProfile,
+  validStep,
+} from "./onboarding.ts";
 import { parseStoredProfile } from "./storage/profile.ts";
 
 const profile = (overrides: Partial<StudentProfile> = {}): StudentProfile => ({
@@ -28,6 +38,7 @@ test("language preference is optional and legacy profiles restore it as unknown"
   delete legacy.preferredLanguage;
   const restored = parseStoredProfile(JSON.stringify({ version: 1, profile: legacy, step: 3, completed: false }));
   assert.equal(restored?.profile.preferredLanguage, null);
+  assert.equal(restored?.flowStage, "onboarding");
 });
 
 test("activities and achievements are optional and legacy profiles restore them as empty", () => {
@@ -106,4 +117,132 @@ test("a persisted four-step profile restores without changing its values", () =>
   assert.equal(restored?.step, 3);
   assert.equal(restored?.profile.satScore, null);
   assert.deepEqual(restored?.profile.preferredCountries, ["Finland", "Netherlands"]);
+});
+
+test("instant current state transfers every supported value into the full profile", () => {
+  const transferred = transferInstantProfile(profile({
+    currentStudyStage: null,
+    gpa: null,
+    ieltsScore: null,
+    satScore: null,
+  }), {
+    ...emptyProfile,
+    currentStudyStage: "Grade 12",
+    gpa: 3.7,
+    ieltsScore: 7,
+    satScore: 1380,
+  });
+
+  assert.equal(transferred.currentStudyStage, "Grade 12");
+  assert.equal(transferred.gpa, 3.7);
+  assert.equal(transferred.ieltsScore, 7);
+  assert.equal(transferred.satScore, 1380);
+});
+
+test("blank instant values preserve all existing profile and preference data", () => {
+  const existing = profile({
+    preferredCountries: ["Finland"],
+    preferredLanguage: "English",
+    activitiesAndAchievements: "Robotics project",
+    targetIntake: "Fall 2028",
+    gpa: 3.4,
+    ieltsScore: 6.5,
+    satScore: 1290,
+    annualBudget: 22_000,
+    budgetCurrency: "EUR",
+  });
+
+  assert.deepEqual(transferInstantProfile(existing, emptyProfile), existing);
+});
+
+test("instant transfer changes no inferred goal or preference fields", () => {
+  const existing = profile({
+    targetDegree: null,
+    intendedField: null,
+    preferredCountries: ["Netherlands"],
+    preferredLanguage: "English",
+    activitiesAndAchievements: "Volunteering",
+  });
+  const transferred = transferInstantProfile(existing, {
+    ...emptyProfile,
+    currentStudyStage: "Grade 11",
+    gpa: 3.6,
+  });
+
+  assert.equal(transferred.targetDegree, null);
+  assert.equal(transferred.intendedField, null);
+  assert.deepEqual(transferred.preferredCountries, ["Netherlands"]);
+  assert.equal(transferred.preferredLanguage, "English");
+  assert.equal(transferred.activitiesAndAchievements, "Volunteering");
+});
+
+test("refresh restores target, current-state, diagnosis, and onboarding stages", () => {
+  for (const flowStage of ["target", "current", "diagnosis", "onboarding"] as const) {
+    const restored = parseStoredProfile(JSON.stringify({
+      version: 1,
+      profile: profile({ gpa: 3.6 }),
+      step: 1,
+      completed: false,
+      flowStage,
+      updatedAt: "2026-09-18T00:00:00.000Z",
+    }));
+    assert.equal(restored?.flowStage, flowStage);
+    assert.equal(restored?.profile.gpa, 3.6);
+  }
+});
+
+test("legacy, partial, and completed profiles resume the full onboarding flow", () => {
+  const legacy = parseStoredProfile(JSON.stringify({
+    version: 1,
+    profile: profile(),
+    step: 2,
+    completed: false,
+  }));
+  const partial = parseStoredProfile(JSON.stringify({
+    version: 1,
+    profile: profile({ intendedField: "Business" }),
+    step: 3,
+    completed: false,
+    flowStage: "onboarding",
+  }));
+  const completed = parseStoredProfile(JSON.stringify({
+    version: 1,
+    profile: profile(),
+    step: 4,
+    completed: true,
+  }));
+
+  assert.deepEqual([legacy?.flowStage, legacy?.step], ["onboarding", 2]);
+  assert.deepEqual([partial?.flowStage, partial?.step], ["onboarding", 3]);
+  assert.deepEqual([completed?.flowStage, completed?.completed], ["onboarding", true]);
+});
+
+test("transferred values use the existing Fit Score and eligibility rules", () => {
+  const program = getProgramById("lut-software-systems-engineering")!;
+  const beforeTransfer = profile({
+    currentStudyStage: null,
+    gpa: null,
+    ieltsScore: null,
+    satScore: null,
+    preferredLanguage: "English",
+    activitiesAndAchievements: "Robotics project",
+  });
+  const instant = {
+    ...emptyProfile,
+    currentStudyStage: "Grade 12",
+    gpa: 3.6,
+    ieltsScore: 6.5,
+    satScore: 1320,
+  };
+  const transferred = transferInstantProfile(beforeTransfer, instant);
+  const directlyEntered = {
+    ...beforeTransfer,
+    currentStudyStage: "Grade 12",
+    gpa: 3.6,
+    ieltsScore: 6.5,
+    satScore: 1320,
+  };
+
+  assert.deepEqual(calculateFit(transferred, program), calculateFit(directlyEntered, program));
+  assert.equal(evaluateEligibility(transferred, program), evaluateEligibility(directlyEntered, program));
 });

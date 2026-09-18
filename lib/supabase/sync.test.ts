@@ -232,6 +232,30 @@ test("profile persistence preserves activities and accepts legacy remote profile
   assert.equal(parseRemoteProfile(legacy)?.profile.activitiesAndAchievements, null);
 });
 
+test("profile sync preserves instant flow stage and accepts legacy records without it", () => {
+  const stored = {
+    version: 1 as const,
+    profile: { ...profile, gpa: 3.4 },
+    step: 1,
+    completed: false,
+    flowStage: "diagnosis" as const,
+    updatedAt: "2026-09-18T00:00:00.000Z",
+  };
+  const payload = serializeProfile(stored);
+  const remote = {
+    profile: payload,
+    step: stored.step,
+    completed: stored.completed,
+    updated_at: stored.updatedAt,
+  };
+
+  assert.equal(payload.flowStage, "diagnosis");
+  assert.equal(parseRemoteProfile(remote)?.flowStage, "diagnosis");
+
+  delete remote.profile.flowStage;
+  assert.equal(parseRemoteProfile(remote)?.flowStage, "onboarding");
+});
+
 test("client-side Supabase code never references privileged keys", () => {
   const source = [
     readFileSync(new URL("./client.ts", import.meta.url), "utf8"),

@@ -2,7 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { StudentProfile } from "../../types/admissions.ts";
 import { applyJourneyState, loadJourneyState, parseJourneyState } from "../storage/journey.ts";
 import type { JourneyState } from "../storage/journey.ts";
-import { isStudentProfile, loadStoredProfile, saveStoredProfile } from "../storage/profile.ts";
+import {
+  isOnboardingFlowStage,
+  isStudentProfile,
+  loadStoredProfile,
+  saveStoredProfile,
+} from "../storage/profile.ts";
 import type { StoredProfile } from "../storage/profile.ts";
 import { getSupabaseClient } from "./client.ts";
 import type { Database, Json, PersistedStudentProfile } from "./types.ts";
@@ -53,6 +58,7 @@ export function serializeProfile(profile: StoredProfile): PersistedStudentProfil
     satScore,
     annualBudget,
     budgetCurrency,
+    flowStage: profile.flowStage,
   };
 }
 
@@ -95,11 +101,15 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     "satScore",
     "annualBudget",
     "budgetCurrency",
+    "flowStage",
   ];
-  const requiredProfileKeys = profileKeys.filter((key) => key !== "preferredLanguage" && key !== "activitiesAndAchievements");
+  const requiredProfileKeys = profileKeys.filter(
+    (key) => key !== "preferredLanguage" && key !== "activitiesAndAchievements" && key !== "flowStage",
+  );
   const allowedProfileKeys = new Set(profileKeys);
   if (
     !requiredProfileKeys.every((key) => key in remote) ||
+    (remote.flowStage !== undefined && !isOnboardingFlowStage(remote.flowStage)) ||
     Object.keys(remote).some((key) => !allowedProfileKeys.has(key))
   ) return null;
   const candidate: StudentProfile = {
@@ -127,6 +137,7 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     profile: candidate,
     step: row.step,
     completed: row.completed,
+    flowStage: isOnboardingFlowStage(remote.flowStage) ? remote.flowStage : "onboarding",
     updatedAt: row.updated_at,
   };
 }
@@ -153,8 +164,8 @@ export async function synchronizePersistence(gateway: PersistenceGateway) {
   const remoteProfile = parseRemoteProfile(rawProfile, localProfile?.profile ?? null);
   const profileWinner = chooseNewer(localProfile, remoteProfile);
   if (profileWinner?.source === "remote") {
-    const { profile, step, completed, updatedAt } = profileWinner.value;
-    saveStoredProfile(profile, step, completed, { source: "remote", updatedAt });
+    const { profile, step, completed, flowStage, updatedAt } = profileWinner.value;
+    saveStoredProfile(profile, step, completed, { source: "remote", flowStage, updatedAt });
   } else if (profileWinner?.source === "local" && (!remoteProfile || profileWinner.value.updatedAt !== remoteProfile.updatedAt)) {
     await gateway.saveProfile(userId, profileWinner.value);
   }
