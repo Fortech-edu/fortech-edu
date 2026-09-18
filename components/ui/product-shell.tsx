@@ -8,6 +8,7 @@ export function ProductShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
           <Brand />
           <nav aria-label="Product navigation" className="flex items-center gap-1 sm:gap-5">
+            <Link href="/interests" className="product-nav-link hidden md:inline-flex">Interests</Link>
             <Link href="/diagnosis" className="product-nav-link hidden sm:inline-flex">Diagnosis</Link>
             <Link href="/matches" className="product-nav-link hidden sm:inline-flex">Matches</Link>
             <Link href="/roadmap" className="product-nav-link hidden md:inline-flex">Roadmap</Link>

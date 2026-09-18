@@ -85,6 +85,9 @@ export default function Home() {
                 <Link href="/onboarding" className="landing-button inline-flex min-h-14 items-center justify-center rounded-full px-7 font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)]">Build my profile <span aria-hidden="true" className="landing-button-arrow ml-3">↗</span></Link>
                 <a href="#journey" className="landing-text-link inline-flex min-h-12 items-center justify-center px-5 text-sm font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)]">See how it works</a>
               </div>
+              <p className="mt-4 text-sm leading-6 text-[var(--landing-muted)]">
+                Not sure which direction to pick? <Link href="/interests" className="landing-text-link font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--landing-accent)]">Take the 4-minute interest check</Link> first.
+              </p>
             </div>
 
             <div className="landing-preview-enter relative lg:translate-y-6" aria-label="Fortech product preview using current program facts">
@@ -271,7 +274,7 @@ export default function Home() {
           </div>
           <nav aria-label="Footer navigation">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-100">Explore</p>
-            <div className="mt-4 flex flex-col items-start gap-3 text-sm"><a href="#journey" className="landing-footer-link">How it works</a><a href="#why-fortech" className="landing-footer-link">Why Fortech</a><Link href="/onboarding" className="landing-footer-link">Start profile</Link></div>
+            <div className="mt-4 flex flex-col items-start gap-3 text-sm"><a href="#journey" className="landing-footer-link">How it works</a><a href="#why-fortech" className="landing-footer-link">Why Fortech</a><Link href="/interests" className="landing-footer-link">Interest check</Link><Link href="/onboarding" className="landing-footer-link">Start profile</Link></div>
           </nav>
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-100">Data context</p>
