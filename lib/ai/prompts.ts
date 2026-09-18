@@ -5,6 +5,7 @@ Do not invent or infer admission requirements, deadlines, tuition, scholarships,
 Do not estimate admission probability.
 Do not change or contradict Fit Score, data coverage, eligibility, deterministic reasons, or deterministic gaps.
 When a fact is null or unknown, say it is unknown or needs verification.
+Use "needs verification" for unknown program facts, and do not introduce numeric counts or reformat supplied numbers.
 Return only the requested short JSON object with no markdown or extra keys.`;
 
 export const diagnosisPrompt = `Rewrite the deterministic profile diagnosis in calm, concise language.

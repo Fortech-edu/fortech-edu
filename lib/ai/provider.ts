@@ -57,7 +57,7 @@ class JsonChatProvider implements AIProvider {
           { role: "user", content: `UNTRUSTED DATA:\n${JSON.stringify(payload)}` },
         ],
         response_format: { type: "json_object" },
-        temperature: 0.2,
+        temperature: 0,
       }),
       signal,
     });
