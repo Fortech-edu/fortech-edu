@@ -34,6 +34,73 @@ export function formatRequirement(requirement: Requirement | null) {
   return `${requirement.minimumScore} minimum`;
 }
 
+export type TargetRequirementFact = {
+  key: "academic" | "ielts" | "sat" | "language" | "documents" | "deadline";
+  label: string;
+  value: string;
+  detail: string;
+  state: "known" | "unknown" | "not_required";
+};
+
+function targetRequirementFact(
+  key: "academic" | "ielts" | "sat",
+  label: string,
+  requirement: Requirement | null,
+): TargetRequirementFact {
+  if (requirement === null || requirement.isRequired === null) {
+    return { key, label, value: "Unknown", detail: "The current verified data does not state this requirement.", state: "unknown" };
+  }
+  return {
+    key,
+    label,
+    value: `${requirement.label} · ${formatRequirement(requirement)}`,
+    detail: requirement.notes ?? "No additional verified note is available.",
+    state: requirement.isRequired ? "known" : "not_required",
+  };
+}
+
+export function buildTargetRequirementFacts(program: UniversityProgram): TargetRequirementFact[] {
+  const documents = program.applicationDocuments;
+  const documentValue = documents
+    ? [
+        `Motivation letter: ${documents.motivationLetter === null ? "Needs verification" : documents.motivationLetter ? "Required" : "Not required"}`,
+        `Recommendation letters: ${documents.recommendationLetters === null ? "Needs verification" : documents.recommendationLetters ? "Required" : "Not required"}`,
+      ].join(" · ")
+    : "Unknown";
+  const documentState = !documents || documents.motivationLetter === null || documents.recommendationLetters === null
+    ? "unknown"
+    : documents.motivationLetter || documents.recommendationLetters
+      ? "known"
+      : "not_required";
+
+  return [
+    targetRequirementFact("academic", "Academic requirement", program.academicRequirement),
+    targetRequirementFact("ielts", "English requirement", program.ieltsRequirement),
+    targetRequirementFact("sat", "Standardized test", program.satRequirement),
+    {
+      key: "language",
+      label: "Language of instruction",
+      value: formatLanguageOfInstruction(program),
+      detail: program.languageOfInstruction === null ? "The current verified data does not state the teaching language." : "Published program language.",
+      state: program.languageOfInstruction === null ? "unknown" : "known",
+    },
+    {
+      key: "documents",
+      label: "Motivation and recommendations",
+      value: documentValue,
+      detail: documents ? "Only document requirements represented in the current program data are shown." : "The current verified data does not state these document requirements.",
+      state: documentState,
+    },
+    {
+      key: "deadline",
+      label: "Application deadline",
+      value: program.deadline ?? "Unknown",
+      detail: program.deadline === null ? "No verified deadline is available in the current data." : "Published deadline; recheck the official source before applying.",
+      state: program.deadline === null ? "unknown" : "known",
+    },
+  ];
+}
+
 export function formatTuition(program: UniversityProgram) {
   if (program.tuition === null || program.tuitionCurrency === null) return "Unknown";
   const amount = `${program.tuitionCurrency.toUpperCase()} ${new Intl.NumberFormat("en-US", {

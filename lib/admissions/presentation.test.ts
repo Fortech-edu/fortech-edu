@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
-import { programs } from "../../data/programs.ts";
+import { getProgramById, programs } from "../../data/programs.ts";
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 import { assessProgram } from "./recommend.ts";
 import {
   buildProfileProgramCriteria,
   buildProgramComparisonCriteria,
+  buildTargetRequirementFacts,
   formatRequirement,
   formatScoreComponent,
   getProgramSource,
@@ -130,6 +131,35 @@ test("official source URLs pass through unchanged", () => {
       "https://www.lut.fi/en/studies/tekniikka/bachelors-programme-software-and-systems-engineering-hebut-double-degree",
     ],
   );
+});
+
+test("a target resolves to the existing program domain and exposes verified requirements", () => {
+  const program = getProgramById("lut-software-systems-engineering");
+  assert.strictEqual(program, productionById("lut-software-systems-engineering"));
+
+  const facts = buildTargetRequirementFacts(program!);
+  assert.equal(facts.find(({ key }) => key === "academic")?.state, "known");
+  assert.match(facts.find(({ key }) => key === "academic")!.value, /Upper secondary degree/);
+  assert.match(facts.find(({ key }) => key === "ielts")!.value, /6\.5 minimum/);
+  assert.equal(facts.find(({ key }) => key === "sat")?.state, "not_required");
+  assert.equal(facts.find(({ key }) => key === "deadline")?.value, "2027-04-30");
+});
+
+test("target requirements preserve unknown data instead of inferring it", () => {
+  const unknown = {
+    ...productionById("lut-software-systems-engineering"),
+    academicRequirement: null,
+    ieltsRequirement: null,
+    satRequirement: null,
+    languageOfInstruction: null,
+    applicationDocuments: null,
+    deadline: null,
+  };
+  const facts = buildTargetRequirementFacts(unknown);
+
+  assert.equal(facts.every(({ state }) => state === "unknown"), true);
+  assert.equal(facts.every(({ value }) => value === "Unknown"), true);
+  assert.equal(facts.some(({ detail }) => /infer|assume/i.test(detail)), false);
 });
 
 test("compare rows mark same and different values without declaring a winner", () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { programs } from "../../data/programs.ts";
+import { getProgramById, programs } from "../../data/programs.ts";
 import { buildChangeImpact } from "../../lib/admissions/change-impact.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import {
@@ -15,6 +15,7 @@ import {
 import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadStoredProfile, saveStoredProfile } from "../../lib/storage/profile.ts";
 import type { StoredProfile } from "../../lib/storage/profile.ts";
+import { loadSelectedProgram, saveSelectedProgram } from "../../lib/storage/selection.ts";
 import {
   clearEditBaseline,
   clearRecentChangeImpact,
@@ -22,10 +23,11 @@ import {
   saveEditBaseline,
   saveRecentChangeImpact,
 } from "../../lib/storage/change-impact.ts";
-import type { StudentProfile } from "../../types/admissions.ts";
+import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
+import { TargetStep } from "./target-step.tsx";
 
 const stepDetails = [
-  ["Your direction", "Define the Bachelor journey you want to build."],
+  ["Where are you today?", "Add your current stage and study direction after reviewing the target requirements."],
   ["Your academics", "Add what you know today. Blank scores remain unknown."],
   ["Your preferences", "Choose where, when, and what tuition budget works for you."],
   ["Your admission profile", "Review what we know before your profile is analyzed."],
@@ -108,12 +110,12 @@ function FieldCard({ children, tone = "plain" }: { children: ReactNode; tone?: "
 }
 
 function StepProgress({ step }: { step: number }) {
-  const labels = ["Direction", "Academics", "Preferences", "Review"];
+  const labels = ["Target", "Current state", "Academics", "Preferences", "Review"];
 
   return (
     <nav aria-label="Onboarding progress">
       <ol className="space-y-1">
-        {stepDetails.map(([title], index) => {
+        {labels.map((title, index) => {
           const number = index + 1;
           const isCurrent = number === step;
           const isComplete = number < step;
@@ -132,8 +134,9 @@ function StepProgress({ step }: { step: number }) {
   );
 }
 
-function ProfilePreview({ profile }: { profile: StudentProfile }) {
+function ProfilePreview({ profile, target }: { profile: StudentProfile; target: UniversityProgram | null }) {
   const rows = [
+    ["Target", [target ? `${target.programName} @ ${target.universityName}` : "Not selected"]],
     ["Goal", [
       display(profile.targetDegree, "Not selected"),
       display(profile.intendedField, "Not selected"),
@@ -168,12 +171,12 @@ function ProfilePreview({ profile }: { profile: StudentProfile }) {
   );
 }
 
-function ReviewSection({ title, step, onEdit, children }: { title: string; step: number; onEdit: (step: number) => void; children: ReactNode }) {
+function ReviewSection({ title, onEdit, children }: { title: string; onEdit: () => void; children: ReactNode }) {
   return (
     <section className="review-section p-5 sm:p-6">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">{title}</h3>
-        <button type="button" onClick={() => onEdit(step)} className="min-h-11 rounded-full px-3 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:decoration-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
+        <button type="button" onClick={onEdit} className="min-h-11 rounded-full px-3 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:decoration-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
           Edit
         </button>
       </div>
@@ -194,15 +197,19 @@ export function OnboardingForm() {
   }
 
   const initial = loadStoredProfile();
-  return <OnboardingEditor key={initial?.updatedAt ?? "new"} initial={initial} />;
+  const initialTarget = getProgramById(loadSelectedProgram());
+  return <OnboardingEditor key={`${initial?.updatedAt ?? "new"}:${initialTarget?.id ?? "no-target"}`} initial={initial} initialTarget={initialTarget} />;
 }
 
-function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
+function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile | null; initialTarget: UniversityProgram | null }) {
   const router = useRouter();
   const [profile, setProfile] = useState<StudentProfile>(initial?.profile ?? emptyProfile);
+  const [target, setTarget] = useState<UniversityProgram | null>(initialTarget);
+  const [targetStage, setTargetStage] = useState(true);
   const [step, setStep] = useState(initial?.step ?? 1);
   const [completed, setCompleted] = useState(initial?.completed ?? false);
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
+  const [attemptedTarget, setAttemptedTarget] = useState(false);
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -234,6 +241,15 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (targetStage) {
+      if (!target) {
+        setAttemptedTarget(true);
+        return;
+      }
+      setAttemptedTarget(false);
+      setTargetStage(false);
+      return;
+    }
     if (!validStep(step, profile)) {
       setAttemptedStep(step);
       return;
@@ -264,7 +280,10 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
     router.push("/diagnosis");
   }
 
-  const [title, description] = stepDetails[step - 1];
+  const [title, description] = targetStage
+    ? ["Where do you want to get in?", "Choose a real program target and review its known requirements before entering your current state."]
+    : stepDetails[step - 1];
+  const flowStep = targetStage ? 1 : step + 1;
   const errors = stepErrors(step, profile);
   const showRequiredErrors = attemptedStep === step;
   const unsupportedCountries = profile.preferredCountries.filter((country) => !countries.includes(country));
@@ -275,10 +294,10 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
     <form onSubmit={submit} noValidate className="onboarding-layout grid items-start gap-8 lg:grid-cols-[minmax(17rem,0.72fr)_minmax(0,1.6fr)] lg:gap-12">
       <aside className="sticky top-6 hidden space-y-6 lg:block">
         <div className="editorial-section p-4">
-          <StepProgress step={step} />
+          <StepProgress step={flowStep} />
         </div>
         <div className="accent-section p-6">
-          <ProfilePreview profile={profile} />
+          <ProfilePreview profile={profile} target={target} />
           <p className="mt-5 border-t border-sand-300 pt-4 text-xs leading-5 text-muted">
             We use verified program facts for matching. Missing information stays unknown.
           </p>
@@ -289,31 +308,33 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
         <div className="editorial-section mb-5 p-4 lg:hidden">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-forest-700">Step {step} of 4</p>
+              <p className="text-sm font-semibold text-forest-700">Step {flowStep} of 5</p>
               <p className="mt-0.5 font-semibold text-forest-900">{title}</p>
             </div>
-            <span className="text-sm text-muted">{Math.round((step / 4) * 100)}%</span>
+            <span className="text-sm text-muted">{Math.round((flowStep / 5) * 100)}%</span>
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-1.5" aria-label={`Step ${step} of 4`} role="progressbar" aria-valuemin={1} aria-valuemax={4} aria-valuenow={step}>
-            {[1, 2, 3, 4].map((item) => <span key={item} className={`h-1.5 rounded-full ${item <= step ? "bg-forest-700" : "bg-forest-100"}`} />)}
+          <div className="mt-3 grid grid-cols-5 gap-1.5" aria-label={`Step ${flowStep} of 5`} role="progressbar" aria-valuemin={1} aria-valuemax={5} aria-valuenow={flowStep}>
+            {[1, 2, 3, 4, 5].map((item) => <span key={item} className={`h-1.5 rounded-full ${item <= flowStep ? "bg-forest-700" : "bg-forest-100"}`} />)}
           </div>
           <details className="mt-4 border-t border-forest-100 pt-3">
             <summary className="min-h-11 cursor-pointer rounded-lg py-2 text-sm font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
               Your profile so far <span className="mt-1 block font-normal text-muted">{profileSummary(profile)} · View summary</span>
             </summary>
-            <div className="mt-3 rounded-xl bg-sand-100/70 p-4"><ProfilePreview profile={profile} /></div>
+            <div className="mt-3 rounded-xl bg-sand-100/70 p-4"><ProfilePreview profile={profile} target={target} /></div>
           </details>
         </div>
 
         <section className="onboarding-panel overflow-hidden">
           <header className="border-b border-forest-100 px-5 py-6 sm:px-8 sm:py-8">
-            <p className="hidden text-xs font-semibold uppercase tracking-[0.16em] text-forest-600 lg:block">Step {String(step).padStart(2, "0")} of 04</p>
+            <p className="hidden text-xs font-semibold uppercase tracking-[0.16em] text-forest-600 lg:block">Step {String(flowStep).padStart(2, "0")} of 05</p>
             <h1 id="onboarding-step-heading" className="mt-3 text-3xl font-semibold leading-[0.95] text-forest-900 sm:text-5xl">{title}</h1>
             <p className="mt-2 max-w-2xl leading-7 text-muted">{description}</p>
           </header>
 
-          <div key={step} className="onboarding-step-content space-y-0 bg-[var(--surface)] px-5 py-2 sm:px-8 sm:py-4">
-            {step === 1 ? (
+          <div key={targetStage ? "target" : step} className="onboarding-step-content space-y-0 bg-[var(--surface)] px-5 py-2 sm:px-8 sm:py-4">
+            {targetStage ? <TargetStep selected={target} attempted={attemptedTarget} onSelect={(program) => { setTarget(program); setAttemptedTarget(false); saveSelectedProgram(program?.id ?? null); }} /> : null}
+
+            {!targetStage && step === 1 ? (
               <>
                 <FieldCard>
                   <fieldset aria-describedby={showRequiredErrors && errors.currentStudyStage ? "study-stage-help study-stage-error" : "study-stage-help"}>
@@ -362,7 +383,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
               </>
             ) : null}
 
-            {step === 2 ? (
+            {!targetStage && step === 2 ? (
               <>
                 <div className="rounded-2xl border border-sand-300 bg-sand-100 px-4 py-3 text-sm leading-6 text-forest-900">
                   <strong>Blank means unknown.</strong> We never turn a missing score into a pass or a fail.
@@ -393,7 +414,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
               </>
             ) : null}
 
-            {step === 3 ? (
+            {!targetStage && step === 3 ? (
               <>
                 <FieldCard>
                   <fieldset>
@@ -460,20 +481,25 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
               </>
             ) : null}
 
-            {step === 4 ? (
+            {!targetStage && step === 4 ? (
               <div className="space-y-5">
                 <div>
                   <h2 className="text-xl font-semibold text-forest-900 sm:text-2xl">Your admission profile is ready</h2>
                   <p className="mt-2 leading-6 text-muted">Review the information that will shape your deterministic analysis.</p>
                 </div>
 
-                <ReviewSection title="Goal" step={1} onEdit={edit}>
+                <ReviewSection title="Target" onEdit={() => setTargetStage(true)}>
+                  <p className="text-lg font-semibold text-ink">{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}</p>
+                  <p className="mt-1 text-sm text-muted">{target?.country ?? "Country unknown"}</p>
+                </ReviewSection>
+
+                <ReviewSection title="Goal" onEdit={() => edit(1)}>
                   <p className="text-lg font-semibold text-ink">{display(profile.targetDegree, "Not selected")}</p>
                   <p className="mt-1 text-ink">{display(profile.intendedField, "Not selected")}</p>
                   <p className="mt-1 text-sm text-muted">Current stage: {display(profile.currentStudyStage)}</p>
                 </ReviewSection>
 
-                <ReviewSection title="Academics" step={2} onEdit={edit}>
+                <ReviewSection title="Academics" onEdit={() => edit(2)}>
                   <dl className="grid gap-3 text-sm sm:grid-cols-3">
                     <div><dt className="text-muted">GPA</dt><dd className="mt-1 font-semibold text-ink">{display(profile.gpa)}</dd></div>
                     <div><dt className="text-muted">IELTS</dt><dd className="mt-1 font-semibold text-ink">{display(profile.ieltsScore)}</dd></div>
@@ -483,7 +509,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
                   <p className="mt-1 text-sm text-ink">{profile.activitiesAndAchievements?.trim() || "Not provided"}</p>
                 </ReviewSection>
 
-                <ReviewSection title="Preferences" step={3} onEdit={edit}>
+                <ReviewSection title="Preferences" onEdit={() => edit(3)}>
                   <p className="font-semibold text-ink">{profile.preferredCountries.join(" · ") || "Countries not selected"}</p>
                   <p className="mt-2 text-sm text-ink">Preferred language: {display(profile.preferredLanguage, "No language preference")}</p>
                   <p className="mt-2 text-sm text-ink">{budgetLabel(profile)}</p>
@@ -510,11 +536,11 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
           </div>
 
           <footer className="flex flex-col-reverse gap-3 border-t border-forest-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <button type="button" onClick={() => { setCompleted(false); setAttemptedStep(null); setStep((current) => Math.max(1, current - 1)); }} disabled={step === 1} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-40">
+            <button type="button" onClick={() => { setCompleted(false); setAttemptedStep(null); if (step === 1) setTargetStage(true); else setStep((current) => current - 1); }} disabled={targetStage} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-40">
               Back
             </button>
             <button type="submit" className="min-h-12 rounded-full bg-forest-700 px-7 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-              {step === 4 ? "Analyze my profile" : "Continue"}
+              {targetStage ? "Continue to current state" : step === 4 ? "Analyze my profile" : "Continue"}
             </button>
           </footer>
         </section>
