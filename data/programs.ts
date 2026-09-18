@@ -249,6 +249,7 @@ export const programs: UniversityProgram[] = [
     sources: [
       { type: "program", title: "Computer Science program", url: "https://prog-crs.hkust.edu.hk/ugprog/2026-27/COMP" },
       { type: "admissions", title: "International qualifications", url: "https://join.hkust.edu.hk/admissions/international-qualifications" },
+      { type: "admissions", title: "FAQ: medium of instruction", url: "https://join.hkust.edu.hk/faq" },
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
@@ -274,6 +275,7 @@ export const programs: UniversityProgram[] = [
     sources: [
       { type: "program", title: "Data Science and Technology program", url: "https://prog-crs.hkust.edu.hk/ugprog/2026-27/DSCT" },
       { type: "admissions", title: "International qualifications", url: "https://join.hkust.edu.hk/admissions/international-qualifications" },
+      { type: "admissions", title: "FAQ: medium of instruction", url: "https://join.hkust.edu.hk/faq" },
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
@@ -299,6 +301,7 @@ export const programs: UniversityProgram[] = [
     sources: [
       { type: "program", title: "Finance program", url: "https://prog-crs.hkust.edu.hk/ugprog/2026-27/FINA" },
       { type: "admissions", title: "International qualifications", url: "https://join.hkust.edu.hk/admissions/international-qualifications" },
+      { type: "admissions", title: "FAQ: medium of instruction", url: "https://join.hkust.edu.hk/faq" },
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
@@ -324,6 +327,7 @@ export const programs: UniversityProgram[] = [
     sources: [
       { type: "program", title: "Global Business program", url: "https://prog-crs.hkust.edu.hk/ugprog/2026-27/GBUS" },
       { type: "admissions", title: "International qualifications", url: "https://join.hkust.edu.hk/admissions/international-qualifications" },
+      { type: "admissions", title: "FAQ: medium of instruction", url: "https://join.hkust.edu.hk/faq" },
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
