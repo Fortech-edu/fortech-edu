@@ -454,3 +454,7 @@ export const programs: UniversityProgram[] = [
     verificationDate: verifiedOn,
   },
 ];
+
+export function getProgramById(id: string | null) {
+  return id === null ? null : programs.find((program) => program.id === id) ?? null;
+}
