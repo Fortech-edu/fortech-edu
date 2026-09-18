@@ -84,13 +84,13 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
 
   return (
     <div className="roadmap-view space-y-8">
-      <section className="roadmap-context overflow-hidden">
-        <div className="bg-bg-dark p-5 text-white sm:p-7">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-cyan">Your path to this program</p>
-          <h1 className="mt-3 max-w-5xl break-words text-3xl font-bold leading-tight text-white sm:text-4xl">{program.universityName}</h1>
-          <p className="mt-2 break-words text-lg font-semibold text-text-on-dark-muted">{program.programName}</p>
-          <p className="mt-3 text-sm text-text-on-dark-muted">{program.country ?? "Country unknown"} · {program.degreeLevel ?? "Degree unknown"}</p>
-          <div className="mt-4"><EligibilityBadge status={recommendation.eligibility} /></div>
+      <section className="roadmap-hero overflow-hidden">
+        <div className="bg-[var(--surface)] p-6 sm:p-9 lg:p-12">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-600">Your path to this program</p>
+          <p className="mt-5 font-semibold text-forest-600">{program.universityName}</p>
+          <h1 className="mt-3 max-w-5xl break-words text-4xl font-semibold leading-[0.92] text-forest-900 sm:text-6xl">{program.programName}</h1>
+          <p className="mt-3 text-sm text-muted">{program.country ?? "Country unknown"} · {program.degreeLevel ?? "Degree unknown"}</p>
+          <div className="mt-5"><EligibilityBadge status={recommendation.eligibility} /></div>
         </div>
         <nav className="flex flex-col gap-2 border-t border-forest-100 p-5 sm:flex-row sm:flex-wrap sm:px-9" aria-label="Roadmap navigation">
           <Link href="/matches" className="inline-flex min-h-11 items-center justify-center rounded-full border border-forest-200 px-5 font-semibold text-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">Back to matches</Link>

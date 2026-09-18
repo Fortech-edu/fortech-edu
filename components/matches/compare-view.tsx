@@ -17,15 +17,6 @@ import {
   saveSelectedProgram,
 } from "../../lib/storage/selection.ts";
 import type { Recommendation } from "../../types/admissions.ts";
-import { UniversityIdentity } from "../ui/university-identity.tsx";
-
-const comparisonGroups = [
-  { label: "Requirements", keys: ["eligibility", "fit", "coverage", "country", "field", "academic"] },
-  { label: "Tests", keys: ["ielts", "sat", "language"] },
-  { label: "Costs", keys: ["tuition"] },
-  { label: "Timeline", keys: ["deadline"] },
-  { label: "Trust & verification", keys: ["verification"] },
-] as const;
 
 export function CompareView() {
   const ready = useClientReady();
@@ -185,13 +176,13 @@ function Comparison({
 
   return (
     <div className="compare-view space-y-8">
-      <section className="editorial-section p-5 sm:p-7">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand">Program comparison</p>
-        <h1 className="mt-2 max-w-5xl text-3xl font-semibold text-text-primary sm:text-4xl">Compare university facts, side by side.</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">Differences are highlighted without choosing a winner. Unknown information stays Needs verification.</p>
+      <section className="product-hero p-6 text-white sm:p-9 lg:p-12">
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-forest-100">Program comparison</p>
+        <h1 className="mt-5 max-w-5xl text-4xl font-semibold leading-[0.92] sm:text-6xl lg:text-7xl">Compare what matters, criterion by criterion.</h1>
+        <p className="mt-3 max-w-2xl leading-7 text-forest-100">Differences are highlighted without choosing a winner. Unknown information stays unknown.</p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Link href="/matches" className="product-button-primary">Back to matches</Link>
-          <button type="button" onClick={onClear} className="product-button-secondary">Clear comparison</button>
+          <Link href="/matches" className="inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">← Back to matches</Link>
+          <button type="button" onClick={onClear} className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/30 px-5 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Clear comparison</button>
         </div>
       </section>
 
@@ -203,58 +194,36 @@ function Comparison({
           </div>
           <p className="mt-2 text-sm leading-6 text-muted">Fit is profile alignment, not admission probability. Tuition is compared only when currency and billing period match.</p>
 
-          <div className="mt-5 space-y-6 md:hidden">
-            {[first, second].map((recommendation, index) => (
-              <section key={recommendation.program.id} className="overflow-clip rounded-xl border border-border bg-white">
-                <div className="sticky top-16 z-10 border-b border-border bg-white p-4 shadow-sm">
-                  <ProgramHeading recommendation={recommendation} onRemove={() => onRemove(recommendation.program.id)} />
-                </div>
-                <dl>
-                  {comparisonGroups.map((group) => (
-                    <div key={group.label}>
-                      <div className="bg-bg-surface-subtle px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand">{group.label}</div>
-                      {rows.filter((row) => group.keys.includes(row.key as never)).map((row) => (
-                        <div key={row.key} className="border-t border-border px-4 py-3">
-                          <dt className="text-xs font-semibold text-text-muted">{row.label}</dt>
-                          <dd className="mt-1 break-words text-sm font-semibold text-text-primary">{index === 0 ? row.firstValue : row.secondValue}</dd>
-                          {row.note ? <p className="mt-1 text-xs leading-5 text-text-muted">{row.note}</p> : null}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </dl>
-              </section>
-            ))}
+          <div className="mt-5 space-y-4 md:hidden">
+            <div className="rounded-2xl border border-forest-100 bg-forest-50/40 p-4">
+              <ProgramHeading recommendation={first} onRemove={() => onRemove(first.program.id)} />
+            </div>
+            <div className="rounded-2xl border border-forest-100 bg-forest-50/40 p-4">
+              <ProgramHeading recommendation={second} onRemove={() => onRemove(second.program.id)} />
+            </div>
           </div>
 
-          <div className="comparison-sticky-head mt-7 hidden grid-cols-[minmax(9rem,.7fr)_minmax(0,1fr)_minmax(0,1fr)] gap-6 border-b border-border bg-white px-4 py-4 md:grid">
+          <div className="mt-7 hidden grid-cols-[minmax(9rem,.7fr)_minmax(0,1fr)_minmax(0,1fr)] gap-6 border-b border-forest-200 px-4 pb-5 md:grid">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Criterion</p>
             <ProgramHeading recommendation={first} onRemove={() => onRemove(first.program.id)} />
             <ProgramHeading recommendation={second} onRemove={() => onRemove(second.program.id)} />
           </div>
 
-          <div className="hidden border-b border-border md:block">
-            {comparisonGroups.map((group) => (
-              <section key={group.label} aria-label={group.label}>
-                <h3 className="bg-bg-surface-subtle px-4 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-brand">{group.label}</h3>
-                <dl className="divide-y divide-border">
-                  {rows.filter((row) => group.keys.includes(row.key as never)).map((row) => (
-                    <div key={row.key} className="grid grid-cols-[minmax(9rem,.7fr)_minmax(0,1fr)_minmax(0,1fr)] gap-6 px-4 py-4">
-                      <dt>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-text-primary">{row.label}</span>
-                          {row.different ? <span className="rounded-full bg-[var(--status-verify-bg)] px-2 py-0.5 text-[11px] font-bold text-[var(--status-verify-text)]">Different</span> : null}
-                        </div>
-                        {row.note ? <p className="mt-2 text-xs leading-5 text-text-muted">{row.note}</p> : null}
-                      </dt>
-                      <ComparisonValue recommendation={first} value={row.firstValue} />
-                      <ComparisonValue recommendation={second} value={row.secondValue} />
-                    </div>
-                  ))}
-                </dl>
-              </section>
+          <dl className="divide-y divide-forest-100 border-y border-forest-100 md:border-t-0">
+            {rows.map((row) => (
+              <div key={row.key} className="grid gap-4 py-6 md:grid-cols-[minmax(9rem,.7fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-6 md:px-4">
+                <dt>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-forest-900">{row.label}</span>
+                    {row.different ? <span className="rounded-full bg-sand-100 px-2 py-0.5 text-[11px] font-bold text-amber-900">Different</span> : null}
+                  </div>
+                  {row.note ? <p className="mt-2 text-xs leading-5 text-muted">{row.note}</p> : null}
+                </dt>
+                <ComparisonValue recommendation={first} value={row.firstValue} />
+                <ComparisonValue recommendation={second} value={row.secondValue} />
+              </div>
             ))}
-          </div>
+          </dl>
         </div>
 
         <section className="border-t border-forest-100 bg-[color:var(--page)] p-6 sm:p-8" aria-labelledby="roadmap-choice-title">
@@ -263,7 +232,7 @@ function Comparison({
           <div className="mt-5 grid gap-3 md:grid-cols-2">
             {[first, second].map((recommendation) => (
               <button key={recommendation.program.id} type="button" onClick={() => buildRoadmap(recommendation)} className="min-h-12 break-words rounded-2xl border border-forest-200 bg-white px-5 py-3 text-left font-semibold text-forest-700 hover:bg-forest-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-                Build roadmap for {recommendation.program.universityName}
+                Build roadmap for {recommendation.program.programName}
               </button>
             ))}
           </div>
@@ -283,14 +252,8 @@ function ProgramHeading({
   const { program } = recommendation;
   return (
     <div className="min-w-0">
-      <UniversityIdentity
-        universityName={program.universityName}
-        programName={program.programName}
-        location={[program.country, program.city].filter(Boolean).join(" · ")}
-        showMonogram
-        size="lg"
-      />
-      <p className="mt-3 text-sm font-semibold text-text-primary">Fit {recommendation.fitScore} <span className="font-normal text-text-muted">· {recommendation.dataCoverage}% coverage</span></p>
+      <p className="break-words text-sm font-semibold text-forest-600">{program.universityName}</p>
+      <h3 className="mt-1 break-words text-lg font-semibold leading-6 text-forest-900">{program.programName}</h3>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <Link href={`/matches/${program.id}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">View program</Link>
         {onRemove && (

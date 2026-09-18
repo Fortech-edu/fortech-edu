@@ -1,26 +1,16 @@
 import Link from "next/link";
 
-export function Brand({
-  className = "",
-  variant = "default",
-}: {
-  className?: string;
-  variant?: "default" | "on-dark";
-}) {
-  const isDark = variant === "on-dark";
-
+export function Brand() {
   return (
     <Link
       href="/"
-      className={`product-brand inline-flex items-center gap-2.5 font-bold tracking-[-0.03em] transition-opacity hover:opacity-95 ${
-        isDark ? "text-white" : "text-[#10233F]"
-      } ${className}`}
+      className="product-brand inline-flex items-center gap-3 font-semibold tracking-[-0.03em] text-[var(--ink)]"
       aria-label="Fortech home"
     >
-      <span className="product-brand-mark flex size-8 items-center justify-center rounded-lg bg-[#1677FF] text-sm font-bold text-white shadow-xs">
+      <span className="product-brand-mark flex size-9 items-center justify-center rounded-full bg-[var(--dark)] text-sm font-bold text-white">
         F
       </span>
-      <span className="text-lg font-bold tracking-tight">Fortech</span>
+      <span className="text-lg">Fortech</span>
     </Link>
   );
 }

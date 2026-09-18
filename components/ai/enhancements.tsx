@@ -53,16 +53,16 @@ export function DiagnosisEnhancement({
   const copy = diagnosisExplanationCopy(result?.source ?? null);
 
   return (
-    <section className="ai-advisor-card p-5 sm:p-6" aria-labelledby="diagnosis-explanation-title">
+    <section className="accent-section p-5 sm:p-7" aria-labelledby="diagnosis-explanation-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-bg-dark text-cyan shadow-sm" aria-hidden="true">✦</span>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-forest-700 shadow-sm" aria-hidden="true">✦</span>
           <div>
-            <h2 id="diagnosis-explanation-title" className="text-lg font-semibold text-text-primary">AI Advisor</h2>
+            <h2 id="diagnosis-explanation-title" className="text-lg font-semibold text-forest-900">{copy.title}</h2>
             <p className="mt-1 text-sm leading-6 text-muted">{copy.disclosure}</p>
           </div>
         </div>
-        <span className="text-xs font-semibold text-text-muted">
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-forest-700">
           {result === null ? "Preparing insight…" : result.source === "ai" ? "AI-assisted" : "Deterministic summary"}
         </span>
       </div>
@@ -84,10 +84,17 @@ export function DiagnosisEnhancement({
               </div>
             ) : null}
 
-            {result.content.nextSteps[0] ? (
+            {result.content.nextSteps.length > 0 ? (
               <div className="mt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand">Next step</p>
-                <p className="mt-1.5 text-sm font-semibold leading-6 text-text-primary">{result.content.nextSteps[0]}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">Recommended next steps</p>
+                <ol className="mt-2 space-y-2 text-sm leading-6 text-ink">
+                  {result.content.nextSteps.map((step, index) => (
+                    <li key={step} className="flex gap-2">
+                      <span aria-hidden="true" className="font-semibold text-forest-700">{index + 1}.</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
               </div>
             ) : null}
 
@@ -117,14 +124,6 @@ export function DiagnosisEnhancement({
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">Advisor note</p>
                     <p className="mt-2 text-sm leading-6 text-ink">{result.content.advisorNote}</p>
-                  </div>
-                ) : null}
-                {result.content.nextSteps.length > 1 ? (
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">Full next steps</p>
-                    <ol className="mt-2 space-y-2 text-sm leading-6 text-ink">
-                      {result.content.nextSteps.map((step, index) => <li key={step} className="flex gap-2"><span className="font-semibold text-brand">{index + 1}.</span><span>{step}</span></li>)}
-                    </ol>
                   </div>
                 ) : null}
               </div>
