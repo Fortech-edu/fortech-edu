@@ -3,7 +3,7 @@ import test from "node:test";
 import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
 import { getProgramById } from "../../data/programs.ts";
 import type { StudentProfile, UniversityProgram } from "../../types/admissions.ts";
-import { diagnoseProfile, diagnoseTarget } from "./diagnosis.ts";
+import { buildDiagnosisSummary, diagnoseProfile, diagnoseTarget } from "./diagnosis.ts";
 import { evaluateEligibility } from "./eligibility.ts";
 import { generateRoadmap } from "./roadmap.ts";
 import { calculateFit } from "./scoring.ts";
@@ -142,6 +142,60 @@ test("a strong profile still receives useful deterministic priorities", () => {
   assert.equal(diagnosis.biggestGaps.length, 0);
   assert.ok(diagnosis.priorities.length >= 3 && diagnosis.priorities.length <= 5);
   assert.equal(diagnosis.priorities.every(({ basis }) => basis === "Needs verification"), true);
+});
+
+test("diagnosis summary counts requirement states without turning unknowns into gaps", () => {
+  const diagnosis = diagnoseTarget({ ...profile, gpa: null, ieltsScore: 6 }, program)!;
+  const summary = buildDiagnosisSummary(diagnosis);
+
+  assert.deepEqual(summary.requirementCounts, {
+    match: 3,
+    actionNeeded: 1,
+    needsVerification: 1,
+  });
+  assert.equal(summary.biggestConfirmedGap?.key, "ielts");
+  assert.equal(summary.verificationCount, diagnosis.unknowns.length);
+  assert.equal(summary.verificationPreview.every((item) => diagnosis.unknowns.includes(item)), true);
+});
+
+test("confirmed gap summary uses the first existing deterministic gap and action", () => {
+  const twente = getProgramById("utwente-technical-computer-science")!;
+  const diagnosis = diagnoseTarget({ ...profile, ieltsScore: 5.5 }, twente)!;
+  const summary = buildDiagnosisSummary(diagnosis);
+
+  assert.equal(summary.biggestConfirmedGap, diagnosis.biggestGaps[0]);
+  assert.equal(summary.biggestConfirmedGap?.key, "ielts");
+  assert.equal(summary.biggestConfirmedGap?.detail, "Your score is 0.5 below the published minimum.");
+  assert.equal(summary.nextAction, diagnosis.priorities[0]);
+  assert.equal(summary.nextAction?.basis, "Confirmed gap");
+  assert.equal(summary.nextAction?.relatedRequirement, "IELTS");
+});
+
+test("strong profile summary has no confirmed comparable gap and makes no overall verdict", () => {
+  const summary = buildDiagnosisSummary(diagnoseTarget(profile, program)!);
+
+  assert.equal(summary.biggestConfirmedGap, null);
+  assert.equal("admissionChance" in summary, false);
+  assert.equal("overallStatus" in summary, false);
+  assert.equal(summary.nextAction?.basis, "Needs verification");
+});
+
+test("unknown-heavy summary remains verification work, never a confirmed gap", () => {
+  const unknownProgram: UniversityProgram = {
+    ...program,
+    academicRequirement: null,
+    ieltsRequirement: null,
+    satRequirement: null,
+    deadline: null,
+  };
+  const diagnosis = diagnoseTarget({ ...profile, currentStudyStage: null, gpa: null, ieltsScore: null }, unknownProgram)!;
+  const summary = buildDiagnosisSummary(diagnosis);
+
+  assert.equal(summary.biggestConfirmedGap, null);
+  assert.equal(summary.requirementCounts.actionNeeded, 0);
+  assert.equal(summary.requirementCounts.needsVerification > 0, true);
+  assert.equal(summary.verificationCount > 0, true);
+  assert.equal(summary.nextAction?.basis === "Confirmed gap", false);
 });
 
 test("roadmap preview is the first part of the existing deterministic roadmap", () => {

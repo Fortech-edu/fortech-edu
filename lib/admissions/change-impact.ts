@@ -549,6 +549,24 @@ export function buildTargetChangeImpact(
 }
 
 /**
+ * Builds a selected-target edit diff only when the previous target is known.
+ * A null previous target is legacy/unknown state, not evidence that the current
+ * target was selected before the edit.
+ */
+export function buildTargetPlanImpactForEdit(
+  previousProfile: StudentProfile,
+  nextProfile: StudentProfile,
+  previousTarget: UniversityProgram | null,
+  nextTarget: UniversityProgram,
+  completedTaskIds: readonly string[] = [],
+): TargetPlanChange | undefined {
+  if (!previousTarget) return undefined;
+  return previousTarget.id === nextTarget.id
+    ? buildTargetPlanImpact(previousProfile, nextProfile, nextTarget, completedTaskIds)
+    : buildTargetChangeImpact(previousTarget, nextTarget);
+}
+
+/**
  * A profile edit is a meaningful Change Impact when at least one deterministic
  * consequence exists: recommendation movement, a target requirement state
  * change, a roadmap task change, a Next Action change, or a selected-target

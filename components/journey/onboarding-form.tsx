@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation";
 import { getProgramById, programs } from "../../data/programs.ts";
 import {
   buildChangeImpact,
-  buildTargetChangeImpact,
-  buildTargetPlanImpact,
+  buildTargetPlanImpactForEdit,
   hasMeaningfulImpact,
   type ChangeImpact,
-  type TargetPlanChange,
 } from "../../lib/admissions/change-impact.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import {
@@ -381,15 +379,9 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
       );
       const target = getProgramById(loadSelectedProgram());
       const previousTarget = getProgramById(baseline.selectedProgramId);
-      let targetPlan: TargetPlanChange | undefined;
-      if (target && previousTarget && previousTarget.id !== target.id) {
-        // The previous plan was built for a different target: report the
-        // target change truthfully instead of comparing the old profile
-        // against the new target as if it had always been selected.
-        targetPlan = buildTargetChangeImpact(previousTarget, target);
-      } else if (target) {
-        targetPlan = buildTargetPlanImpact(previousProfile, profile, target, loadProgress().byProgram[target.id] ?? []);
-      }
+      const targetPlan = target
+        ? buildTargetPlanImpactForEdit(previousProfile, profile, previousTarget, target, loadProgress().byProgram[target.id] ?? [])
+        : undefined;
       const fullImpact: ChangeImpact = targetPlan ? { ...impact, targetPlan } : impact;
       if (hasMeaningfulImpact(fullImpact)) saveRecentChangeImpact(fullImpact);
       else clearRecentChangeImpact();

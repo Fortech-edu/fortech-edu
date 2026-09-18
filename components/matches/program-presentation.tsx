@@ -110,7 +110,7 @@ export const comparisonStatusStyles: Record<ComparisonStatus, string> = {
   "Action needed": "bg-amber-100 text-amber-900",
   "Needs verification": "bg-slate-100 text-slate-700",
   "Not required": "bg-forest-50 text-forest-700",
-  "Not comparable": "bg-sand-100 text-amber-900",
+  "Not comparable": "bg-slate-100 text-slate-700",
 };
 
 export function ProfileProgramComparison({
