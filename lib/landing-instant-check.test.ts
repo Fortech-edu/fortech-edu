@@ -372,12 +372,18 @@ test("target requirement facts match deterministic presentation helpers and pres
   assert.equal(tuition, "EUR 12,000 / year");
 
   // Program with unknown facts retains unknown
-  const aitu = getProgramById("aitu-computer-science")!;
+  const aitu = getProgramById("aitu-software-engineering")!;
   const aituFacts = buildTargetRequirementFacts(aitu);
   const aituIelts = aituFacts.find(({ key }) => key === "ielts");
   assert.ok(aituIelts);
   assert.equal(aituIelts.state, "unknown");
   assert.equal(aituIelts.value, "Unknown");
+
+  // Optional proficiency requirement retains not_required state
+  const aituCs = getProgramById("aitu-computer-science")!;
+  const aituCsIelts = buildTargetRequirementFacts(aituCs).find(({ key }) => key === "ielts");
+  assert.ok(aituCsIelts);
+  assert.equal(aituCsIelts.state, "not_required");
 });
 
 test("current state inputs persist correctly and blank scores remain null (unknown)", () => {

@@ -1,12 +1,15 @@
 import type { UniversityProgram } from "../types/admissions.ts";
 
 const verifiedOn = "2026-09-17";
+// Re-verification date for the 5 demo-critical records audited against official
+// sources in docs/DEMO_PROGRAM_DATA_AUDIT.md.
+const reverifiedOn = "2026-09-18";
 
 // Facts stay null when no clear, generally applicable value is published.
 export const programs: UniversityProgram[] = [
   {
     id: "aitu-computer-science",
-    languageOfInstruction: null,
+    languageOfInstruction: "English",
     universityName: "Astana IT University",
     programName: "Computer Science",
     field: "Computer Science",
@@ -18,16 +21,18 @@ export const programs: UniversityProgram[] = [
     tuitionPeriod: "year",
     tuitionNotes: "Published for international bachelor applicants.",
     academicRequirement: { label: "UNT", minimumScore: null, isRequired: true, notes: "Minimum 70 for paid admission; the university lists 100 for the state grant competition." },
-    ieltsRequirement: null,
+    ieltsRequirement: { label: "English proficiency certificate", minimumScore: null, isRequired: false, notes: "The international-applicant document checklist requests proof of B2-level English \"if any\" — not a mandatory admission requirement." },
     satRequirement: null,
+    applicationDocuments: null,
     deadline: "August 24 (year not specified)",
     sources: [
       { type: "program", title: "Computer Science program", url: "https://astanait.edu.kz/en/Computer-Science-bachelor" },
       { type: "admissions", title: "Bachelor admissions", url: "https://astanait.edu.kz/how-to-apply" },
+      { type: "admissions", title: "International applicant admission requirements and teaching language", url: "https://astanait.edu.kz/inc-academ" },
       { type: "tuition", title: "International applicants", url: "https://astanait.edu.kz/inc-academ" },
       { type: "deadline", title: "Admissions documents and dates", url: "https://astanait.edu.kz/how-to-apply" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "aitu-software-engineering",
@@ -95,14 +100,23 @@ export const programs: UniversityProgram[] = [
     academicRequirement: { label: "Diploma", minimumScore: null, isRequired: true, notes: "An international diploma equivalent to Dutch VWO, including the stated mathematics preparation, is required." },
     ieltsRequirement: { label: "IELTS Academic", minimumScore: 6, isRequired: true, notes: "Overall 6.0 with at least 5.5 in every section." },
     satRequirement: null,
+    applicationDocuments: null,
+    // The official required-documents page lists 13 document categories with no
+    // motivation letter or recommendation letter among them, but that is an
+    // enumerated list, not an explicit "not required" statement — left unknown.
     deadline: null,
+    // The only published date found (30 April 2026) is for the 2026 intake, while
+    // the recorded tuition already reflects the 2027–2028 cycle. No deadline for
+    // the matching 2027 intake is published yet, so this stays unknown rather
+    // than reusing a different cycle's date.
     sources: [
       { type: "program", title: "Technical Computer Science program", url: "https://www.utwente.nl/en/education/bachelor/programmes/technical-computer-science/" },
       { type: "admissions", title: "Technical Computer Science admission", url: "https://www.utwente.nl/en/education/bachelor/programmes/technical-computer-science/enrolment/" },
       { type: "admissions", title: "English language requirements", url: "https://www.utwente.nl/en/education/bachelor/application-admission/admission/language-requirements/" },
+      { type: "admissions", title: "Required application documents", url: "https://www.utwente.nl/en/education/bachelor/how-to-apply/required-application-documents/" },
       { type: "tuition", title: "Technical Computer Science tuition", url: "https://www.utwente.nl/en/education/bachelor/programmes/technical-computer-science/enrolment/tuition-fees/" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "utwente-business-information-technology",
@@ -170,14 +184,20 @@ export const programs: UniversityProgram[] = [
     academicRequirement: { label: "Upper secondary degree", minimumScore: null, isRequired: true, notes: "A qualifying upper secondary degree and the published mathematics curriculum are required." },
     ieltsRequirement: { label: "IELTS Academic", minimumScore: 6.5, isRequired: true, notes: "Overall 6.5 with at least 6.0 in writing and speaking." },
     satRequirement: { label: "SAT", minimumScore: null, isRequired: false, notes: "Accepted as an alternative admission route; not mandatory." },
+    applicationDocuments: null,
+    // Re-verified 2026-09-18: the non-EU/EEA admission-criteria page and a
+    // full-text search of LUT's official Admissions Guide 2026–2027 PDF list no
+    // motivation letter or recommendation letter among required documents, but
+    // neither states an explicit exclusion — left unknown rather than assumed.
     deadline: "2027-04-30",
     sources: [
       { type: "program", title: "Software and Systems Engineering program", url: "https://www.lut.fi/en/studies/tekniikka/bachelors-programme-software-and-systems-engineering-hebut-double-degree" },
       { type: "admissions", title: "Non-EU/EEA admission criteria", url: "https://www.lut.fi/en/studies/apply-lut/applying-bachelors-programmes/rolling-admission-bachelors-studies/admission-criteria-non-eu-eea-applicants" },
       { type: "deadline", title: "International rolling admission", url: "https://www.lut.fi/en/studies/apply-lut/applying-bachelors-programmes/international-rolling-admission-bachelors-studies" },
       { type: "tuition", title: "Program tuition", url: "https://www.lut.fi/en/studies/tekniikka/bachelors-programme-software-and-systems-engineering-hebut-double-degree" },
+      { type: "admissions", title: "LUT Admissions Guide 2026–2027 (PDF)", url: "https://www.lut.fi/sites/default/files/media/documents/LUT-Admissions-guide-2026-2027-for-web.pdf" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "lut-digital-business",
@@ -238,13 +258,18 @@ export const programs: UniversityProgram[] = [
     country: "Hong Kong",
     city: "Hong Kong",
     degreeLevel: "Bachelor of Engineering",
-    tuition: 33000,
-    tuitionCurrency: "USD",
+    tuition: 260000,
+    tuitionCurrency: "HKD",
     tuitionPeriod: "year",
-    tuitionNotes: "Official approximate USD equivalent for non-local students; HKD 260,000 in 2027–2028.",
+    // Corrected 2026-09-18: the previous record stored our own USD conversion of
+    // the published HKD figure. The official fees page publishes HKD as the
+    // primary currency (with its own USD approximation alongside it, not ours),
+    // so we now store the published HKD amount directly.
+    tuitionNotes: "Official non-local/international undergraduate tuition for the 2027/28 academic year. HKUST's own fees page additionally states an official approximate equivalent of ~USD 33,000 — that conversion is theirs, not ours.",
     academicRequirement: { label: "International qualification", minimumScore: null, isRequired: true, notes: "Requirements depend on the applicant's qualification and are reviewed holistically." },
-    ieltsRequirement: null,
-    satRequirement: null,
+    ieltsRequirement: { label: "IELTS Academic", minimumScore: 6, isRequired: true, notes: "University-wide overall band 6.0 minimum for applicants using the international-qualification English proficiency route." },
+    satRequirement: { label: "SAT (American Pattern route)", minimumScore: null, isRequired: false, notes: "Relevant only to applicants presenting the \"American Pattern\" international qualification: SAT total score of 1,190 or above combined with AP scores (ACT 24+ is an accepted alternative). Not applicable to applicants using other qualification systems." },
+    applicationDocuments: { motivationLetter: true, recommendationLetters: true },
     deadline: "2027-06-30",
     sources: [
       { type: "program", title: "Computer Science program", url: "https://prog-crs.hkust.edu.hk/ugprog/2026-27/COMP" },
@@ -252,8 +277,10 @@ export const programs: UniversityProgram[] = [
       { type: "admissions", title: "FAQ: medium of instruction", url: "https://join.hkust.edu.hk/faq" },
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
+      { type: "admissions", title: "English Language Admission Requirement (IELTS)", url: "https://join.hkust.edu.hk/oas/elar.pdf" },
+      { type: "admissions", title: "School of Engineering — international qualifications and SAT route", url: "https://seng.hkust.edu.hk/academics/undergraduate/2026-admissions/international-qualifications" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "hkust-data-science-technology",
@@ -264,10 +291,10 @@ export const programs: UniversityProgram[] = [
     country: "Hong Kong",
     city: "Hong Kong",
     degreeLevel: "Bachelor of Science",
-    tuition: 33000,
-    tuitionCurrency: "USD",
+    tuition: 260000,
+    tuitionCurrency: "HKD",
     tuitionPeriod: "year",
-    tuitionNotes: "Official approximate USD equivalent for non-local students; HKD 260,000 in 2027–2028.",
+    tuitionNotes: "Official non-local undergraduate tuition for the 2027/28 academic year. HKUST publishes an approximate equivalent of ~USD 33,000.",
     academicRequirement: { label: "International qualification", minimumScore: null, isRequired: true, notes: "Requirements depend on the applicant's qualification and are reviewed holistically." },
     ieltsRequirement: null,
     satRequirement: null,
@@ -279,7 +306,7 @@ export const programs: UniversityProgram[] = [
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "hkust-finance",
@@ -290,10 +317,10 @@ export const programs: UniversityProgram[] = [
     country: "Hong Kong",
     city: "Hong Kong",
     degreeLevel: "Bachelor of Business Administration",
-    tuition: 33000,
-    tuitionCurrency: "USD",
+    tuition: 260000,
+    tuitionCurrency: "HKD",
     tuitionPeriod: "year",
-    tuitionNotes: "Official approximate USD equivalent for non-local students; HKD 260,000 in 2027–2028.",
+    tuitionNotes: "Official non-local undergraduate tuition for the 2027/28 academic year. HKUST publishes an approximate equivalent of ~USD 33,000.",
     academicRequirement: { label: "International qualification", minimumScore: null, isRequired: true, notes: "Requirements depend on the applicant's qualification and are reviewed holistically." },
     ieltsRequirement: null,
     satRequirement: null,
@@ -305,7 +332,7 @@ export const programs: UniversityProgram[] = [
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "hkust-global-business",
@@ -316,10 +343,10 @@ export const programs: UniversityProgram[] = [
     country: "Hong Kong",
     city: "Hong Kong",
     degreeLevel: "Bachelor of Business Administration",
-    tuition: 33000,
-    tuitionCurrency: "USD",
+    tuition: 260000,
+    tuitionCurrency: "HKD",
     tuitionPeriod: "year",
-    tuitionNotes: "Official approximate USD equivalent for non-local students; HKD 260,000 in 2027–2028.",
+    tuitionNotes: "Official non-local undergraduate tuition for the 2027/28 academic year. HKUST publishes an approximate equivalent of ~USD 33,000.",
     academicRequirement: { label: "International qualification", minimumScore: null, isRequired: true, notes: "Requirements depend on the applicant's qualification and are reviewed holistically." },
     ieltsRequirement: null,
     satRequirement: null,
@@ -331,7 +358,7 @@ export const programs: UniversityProgram[] = [
       { type: "tuition", title: "Fees and scholarships", url: "https://join.hkust.edu.hk/fees-and-scholarships" },
       { type: "deadline", title: "Application procedures", url: "https://join.hkust.edu.hk/admissions/international-qualifications/application-procedures" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "asu-computer-science",
@@ -384,6 +411,9 @@ export const programs: UniversityProgram[] = [
   {
     id: "asu-data-science",
     languageOfInstruction: null,
+    // No official page found stating instruction language directly; only an
+    // English-proficiency *admission* requirement was found, which is not the
+    // same claim. Left unknown rather than inferred from country.
     universityName: "Arizona State University",
     programName: "Data Science",
     field: "Data Science",
@@ -393,17 +423,26 @@ export const programs: UniversityProgram[] = [
     tuition: null,
     tuitionCurrency: null,
     tuitionPeriod: null,
+    // Confirmed 2026-09-18: ASU's own tuition estimator requires residency,
+    // campus, college/program, and credit load as inputs, confirming there is no
+    // single generally-applicable published rate for this major.
     tuitionNotes: "Tuition varies by residency and program; use the official estimator.",
-    academicRequirement: { label: "GPA", minimumScore: 3, isRequired: true, notes: "Published first-year competency requirement." },
+    academicRequirement: { label: "Aptitude requirement", minimumScore: null, isRequired: true, notes: "Meet one published route: GPA, SAT, ACT, or class rank. No single GPA threshold applies to every applicant." },
     ieltsRequirement: { label: "IELTS", minimumScore: 6, isRequired: true, notes: "General undergraduate English proficiency requirement." },
     satRequirement: { label: "SAT", minimumScore: null, isRequired: false, notes: "ACT or SAT scores are optional for admission." },
+    applicationDocuments: { motivationLetter: false, recommendationLetters: null },
     deadline: null,
+    // ASU operates on rolling admission with published priority (Nov 1) and regular
+    // (Jan 15) filing dates rather than a single fixed final deadline; the previous
+    // 2026-01-15 value is in the past, so deadline stays null rather than storing a stale date.
     sources: [
       { type: "program", title: "Data Science program", url: "https://degrees.asu.edu/bachelors/major/ASU00/LADATSCIBS/data-science" },
       { type: "admissions", title: "International first-year admission", url: "https://admission.asu.edu/apply/international/first-year" },
+      { type: "admissions", title: "First-year admission requirements (no essay required)", url: "https://admission.asu.edu/apply/first-year/admission" },
       { type: "tuition", title: "Tuition estimator", url: "https://tuition.asu.edu/cost/tuition-estimator" },
+      { type: "deadline", title: "First-year application dates and deadlines", url: "https://admission.asu.edu/apply/first-year/admission" },
     ],
-    verificationDate: verifiedOn,
+    verificationDate: reverifiedOn,
   },
   {
     id: "asu-business-data-analytics",

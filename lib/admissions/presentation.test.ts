@@ -138,6 +138,7 @@ test("official source URLs pass through unchanged", () => {
       "https://www.lut.fi/en/studies/apply-lut/applying-bachelors-programmes/rolling-admission-bachelors-studies/admission-criteria-non-eu-eea-applicants",
       "https://www.lut.fi/en/studies/apply-lut/applying-bachelors-programmes/international-rolling-admission-bachelors-studies",
       "https://www.lut.fi/en/studies/tekniikka/bachelors-programme-software-and-systems-engineering-hebut-double-degree",
+      "https://www.lut.fi/sites/default/files/media/documents/LUT-Admissions-guide-2026-2027-for-web.pdf",
     ],
   );
 });
