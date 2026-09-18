@@ -110,12 +110,22 @@ const comparisonStatusStyles: Record<ComparisonStatus, string> = {
   "Not comparable": "bg-sand-100 text-amber-900",
 };
 
-export function ProfileProgramComparison({ profile, recommendation }: { profile: StudentProfile; recommendation: Recommendation }) {
-  const criteria = buildProfileProgramCriteria(profile, recommendation);
+export function ProfileProgramComparison({
+  profile,
+  recommendation,
+  criteria: providedCriteria,
+  eyebrow = "The decision view",
+}: {
+  profile: StudentProfile;
+  recommendation: Recommendation;
+  criteria?: ReturnType<typeof buildProfileProgramCriteria>;
+  eyebrow?: string;
+}) {
+  const criteria = providedCriteria ?? buildProfileProgramCriteria(profile, recommendation);
   return (
     <section aria-labelledby="profile-comparison-title">
       <div className="max-w-3xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">The decision view</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">{eyebrow}</p>
         <h2 id="profile-comparison-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900 sm:text-3xl">Your profile vs this program</h2>
         <p className="mt-2 text-sm leading-6 text-muted">Known facts are compared directly. Missing or non-comparable information stays explicit.</p>
       </div>

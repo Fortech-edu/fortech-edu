@@ -3,7 +3,7 @@ import test from "node:test";
 import { POST as diagnosisPost } from "../../app/api/ai/diagnosis/route.ts";
 import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
 import type { StudentProfile } from "../../types/admissions.ts";
-import { diagnoseProfile } from "../admissions/diagnosis.ts";
+import { diagnoseProfile, diagnoseTarget } from "../admissions/diagnosis.ts";
 import { assessProgram } from "../admissions/recommend.ts";
 import { AIProviderError, getConfiguredProvider } from "./provider.ts";
 import type { AIProvider } from "./provider.ts";
@@ -227,6 +227,20 @@ test("unknown profile fields remain unknown in fallback without probability lang
   assert.ok(input.deterministicDiagnosis.missingInformation.includes("IELTS score"));
   assert.ok(input.deterministicDiagnosis.missingInformation.includes("SAT score"));
   assert.equal(/admission probability|chance of admission/i.test(JSON.stringify(result.content)), false);
+});
+
+test("AI failure leaves the full deterministic target diagnosis available", async () => {
+  const target = demoPrograms[0];
+  const deterministic = diagnoseTarget(profile, target)!;
+  const result = await createAIService(null).generateDiagnosis({
+    profile: toAIProfile(profile),
+    deterministicDiagnosis: deterministic.profileDiagnosis,
+  });
+
+  assert.equal(result.source, "fallback");
+  assert.ok(deterministic.requirementCoverage.length > 0);
+  assert.ok(deterministic.priorities.length > 0);
+  assert.ok(deterministic.roadmapPreview.length > 0);
 });
 
 test("AI result cache key changes when profile inputs change", () => {

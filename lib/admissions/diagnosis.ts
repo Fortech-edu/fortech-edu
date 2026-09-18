@@ -1,4 +1,41 @@
-import type { Diagnosis, StudentProfile } from "../../types/admissions.ts";
+import type {
+  Diagnosis,
+  Recommendation,
+  RoadmapItem,
+  StudentProfile,
+  UniversityProgram,
+} from "../../types/admissions.ts";
+import {
+  buildInstantDiagnosis,
+  type InstantDiagnosisAction,
+} from "./instant-diagnosis.ts";
+import {
+  buildProfileProgramCriteria,
+  buildTargetRequirementFacts,
+  type ComparisonStatus,
+  type ProfileProgramCriterion,
+} from "./presentation.ts";
+import { assessProgram } from "./recommend.ts";
+import { generateRoadmap } from "./roadmap.ts";
+
+export type DiagnosisVerificationItem = {
+  key: string;
+  label: string;
+  status: Extract<ComparisonStatus, "Needs verification" | "Not comparable">;
+  currentValue: string | null;
+  requirementValue: string;
+  detail: string;
+};
+
+export type TargetDiagnosis = {
+  profileDiagnosis: Diagnosis;
+  recommendation: Recommendation;
+  requirementCoverage: ProfileProgramCriterion[];
+  biggestGaps: ProfileProgramCriterion[];
+  unknowns: DiagnosisVerificationItem[];
+  priorities: InstantDiagnosisAction[];
+  roadmapPreview: RoadmapItem[];
+};
 
 export function diagnoseProfile(profile: StudentProfile): Diagnosis {
   const strengths: string[] = [];
@@ -41,4 +78,57 @@ export function diagnoseProfile(profile: StudentProfile): Diagnosis {
   }
 
   return { strengths, gaps, missingInformation };
+}
+
+export function diagnoseTarget(
+  profile: StudentProfile,
+  program: UniversityProgram | null,
+): TargetDiagnosis | null {
+  if (!program) return null;
+
+  const recommendation = assessProgram(profile, program);
+  const requirementCoverage = buildProfileProgramCriteria(profile, recommendation);
+  const instant = buildInstantDiagnosis(profile, program);
+  const documentFact = buildTargetRequirementFacts(program).find(({ key }) => key === "documents");
+  const unknowns: DiagnosisVerificationItem[] = requirementCoverage
+    .filter(({ status }) => status === "Needs verification" || status === "Not comparable")
+    .map((criterion) => ({
+      key: criterion.key,
+      label: criterion.label,
+      status: criterion.status as DiagnosisVerificationItem["status"],
+      currentValue: criterion.profileValue,
+      requirementValue: criterion.programValue,
+      detail: criterion.detail,
+    }));
+
+  if (!profile.currentStudyStage) {
+    unknowns.unshift({
+      key: "currentStudyStage",
+      label: "Current study stage",
+      status: "Needs verification",
+      currentValue: null,
+      requirementValue: "Not provided",
+      detail: "Add your current study stage to keep planning context complete.",
+    });
+  }
+  if (documentFact?.state === "unknown") {
+    unknowns.push({
+      key: documentFact.key,
+      label: documentFact.label,
+      status: "Needs verification",
+      currentValue: null,
+      requirementValue: documentFact.value,
+      detail: documentFact.detail,
+    });
+  }
+
+  return {
+    profileDiagnosis: diagnoseProfile(profile),
+    recommendation,
+    requirementCoverage,
+    biggestGaps: instant.biggestGaps,
+    unknowns,
+    priorities: instant.nextActions,
+    roadmapPreview: generateRoadmap(profile, program).slice(0, 3),
+  };
 }

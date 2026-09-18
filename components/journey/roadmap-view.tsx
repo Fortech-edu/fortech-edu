@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
+import { getProgramById } from "../../data/programs.ts";
+import { assessProgram } from "../../lib/admissions/recommend.ts";
 import {
   generateRoadmap,
   getNextAction,
@@ -36,11 +37,12 @@ export function RoadmapView() {
     return <EmptyState title="Choose a program first" copy="Select a current match before building its roadmap." href="/matches" action="Choose a program" />;
   }
 
-  const recommendation = getPrimaryMatches(stored.profile).find(({ program }) => program.id === selectedId);
-  if (!recommendation) {
-    return <EmptyState title="Selected program is no longer a current match" copy="Your profile changed or this program is unavailable. Choose again from your latest matches; we will not replace it automatically." href="/matches" action="Back to matches" />;
+  const program = getProgramById(selectedId);
+  if (!program) {
+    return <EmptyState title="Selected program is no longer available" copy="Choose another program from the current verified set; we will not replace your target automatically." href="/matches" action="Back to matches" />;
   }
 
+  const recommendation = assessProgram(stored.profile, program);
   const items = generateRoadmap(stored.profile, recommendation.program);
   return <RoadmapContent key={`${stored.updatedAt}:${loadJourneyUpdatedAt()}`} recommendation={recommendation} items={items} />;
 }
