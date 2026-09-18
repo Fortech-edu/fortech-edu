@@ -658,3 +658,13 @@ test("selectCardEvidence respects custom count limits and handles fewer criteria
   const capped = selectCardEvidence(all.slice(0, 2), 4);
   assert.equal(capped.length, 2);
 });
+
+test("university monogram helper derives typographic abbreviations without fake branding", async () => {
+  const { getUniversityMonogram } = await import("./university-monogram.ts");
+
+  assert.equal(getUniversityMonogram(""), "");
+  assert.equal(getUniversityMonogram("LUT University"), "LU");
+  assert.equal(getUniversityMonogram("University of Twente"), "UT");
+  assert.equal(getUniversityMonogram("Astana IT University"), "AIU");
+  assert.equal(getUniversityMonogram("Stanford"), "STA");
+});

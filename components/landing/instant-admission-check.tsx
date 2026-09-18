@@ -31,20 +31,20 @@ import type { StudentProfile, UniversityProgram } from "../../types/admissions.t
 const universities = [...new Set(programs.map((p) => p.universityName))].sort();
 
 const inputClass =
-  "product-input mt-1.5 min-h-11 w-full border border-forest-200 bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-forest-600";
+  "product-input mt-1.5 min-h-[44px] w-full rounded-[10px] border border-[#D7E7FA] bg-white px-3.5 text-base text-[#10233F] outline-none transition placeholder:text-slate-400 hover:border-[#B7D2F0] focus:border-[#1677FF]";
 
 const statusStyles: Record<ComparisonStatus, string> = {
-  Match: "bg-forest-100 text-forest-700",
-  "Action needed": "bg-sand-100 text-amber-900 border border-sand-300",
-  "Needs verification": "bg-slate-100 text-slate-700",
-  "Not required": "bg-forest-50 text-forest-700",
-  "Not comparable": "bg-slate-100 text-slate-700",
+  Match: "bg-[#E7F6EC] text-[#16A34A] border border-[#BFE5CC]",
+  "Action needed": "bg-[#FFF3E0] text-[#C25E00] border border-[#F5D9A8]",
+  "Needs verification": "bg-[#EEF3F9] text-[#5B6B81] border border-[#D7E7FA]",
+  "Not required": "bg-[#EEF3F9] text-[#5B6B81] border border-[#D7E7FA]",
+  "Not comparable": "bg-[#EEF3F9] text-[#5B6B81] border border-[#D7E7FA]",
 };
 
 const requirementStateStyles = {
-  known: "bg-forest-100 text-forest-700",
-  unknown: "bg-slate-100 text-slate-700",
-  not_required: "bg-forest-50 text-forest-700",
+  known: "bg-[#E7F6EC] text-[#16A34A] border border-[#BFE5CC]",
+  unknown: "bg-[#EEF3F9] text-[#5B6B81] border border-[#D7E7FA]",
+  not_required: "bg-[#EEF3F9] text-[#5B6B81] border border-[#D7E7FA]",
 } as const;
 
 const requirementStateLabels = {
@@ -58,8 +58,8 @@ export function InstantAdmissionCheck() {
 
   if (!ready) {
     return (
-      <div className="rounded-2xl border border-black/15 bg-white p-6 shadow-sm sm:p-8">
-        <p className="text-center text-sm text-muted">Loading admission checker…</p>
+      <div className="landing-check-card rounded-2xl border border-[#D7E7FA] bg-white p-6 shadow-subtle sm:p-8">
+        <p className="text-center text-sm text-[#64748B]">Loading admission checker…</p>
       </div>
     );
   }
@@ -160,18 +160,25 @@ function InstantAdmissionCheckContent({
   if (stored?.completed && !completedDismissed) {
     const completedTarget = getProgramById(loadSelectedProgram());
     return (
-      <div className="rounded-2xl border border-black/15 bg-white p-5 shadow-lg sm:p-7">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-4">
-          <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-bold text-forest-900">Active Admission Plan</span>
-          <span className="text-xs text-muted">Completed profile saved</span>
+      <div className="landing-check-card rounded-2xl border border-[#D7E7FA] bg-white p-5 shadow-card sm:p-7">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D7E7FA] pb-4">
+          <span className="rounded-full bg-[#E7F6EC] px-3 py-1 text-xs font-bold text-[#16A34A] border border-[#BFE5CC]">
+            Active Admission Plan
+          </span>
+          <span className="text-xs text-[#64748B]">Completed profile saved</span>
         </div>
 
         <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Target program</p>
-          <h2 className="mt-1 text-xl font-semibold text-forest-900 sm:text-2xl">
-            {completedTarget ? `${completedTarget.programName} @ ${completedTarget.universityName}` : "Your Selected Target"}
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-muted">
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#64748B]">Target program</p>
+          <div className="mt-1.5">
+            <h2 className="text-lg font-bold text-[#10233F] tracking-tight sm:text-xl">
+              {completedTarget?.universityName ?? "Your Selected Target"}
+            </h2>
+            <p className="text-sm font-semibold text-[#1677FF] mt-0.5">
+              {completedTarget ? completedTarget.programName : "Admission Plan"}
+            </p>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-[#64748B]">
             You already have a completed profile and deterministic analysis ready.
           </p>
         </div>
@@ -179,23 +186,23 @@ function InstantAdmissionCheckContent({
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Link
             href="/diagnosis"
-            className="landing-button inline-flex min-h-11 items-center justify-center rounded-full px-5 text-sm font-semibold"
+            className="landing-button inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold"
           >
             View full diagnosis <span aria-hidden="true" className="ml-2">↗</span>
           </Link>
           <Link
             href="/roadmap"
-            className="inline-flex min-h-11 items-center justify-center rounded-full border border-forest-200 px-5 text-sm font-semibold text-forest-900 hover:border-forest-700"
+            className="landing-button-secondary inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold"
           >
             View action roadmap
           </Link>
         </div>
 
-        <div className="mt-6 border-t border-black/10 pt-4">
+        <div className="mt-6 border-t border-[#D7E7FA] pt-4">
           <button
             type="button"
             onClick={() => setCompletedDismissed(true)}
-            className="text-xs font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900"
+            className="text-xs font-semibold text-[#1677FF] underline decoration-[#B7D2F0] underline-offset-4 hover:text-[#0F5EDB]"
           >
             Check a different program without changing your saved plan →
           </button>
@@ -208,21 +215,21 @@ function InstantAdmissionCheckContent({
     <form
       onSubmit={handleContinue}
       noValidate
-      className="landing-check-card rounded-2xl border border-black/15 bg-white p-5 shadow-xl transition sm:p-7"
+      className="landing-check-card rounded-2xl border border-[#D7E7FA] bg-white p-5 shadow-card transition sm:p-7"
       aria-label="Instant Admission Check"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#D7E7FA] pb-4">
         <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-sand-300" aria-hidden="true" />
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-forest-900">Instant Admission Check</span>
+          <span className="size-2 rounded-full bg-[#1677FF]" aria-hidden="true" />
+          <span className="text-xs font-bold uppercase tracking-[0.16em] text-[#10233F]">Instant Admission Check</span>
         </div>
-        <span className="text-[11px] font-medium text-muted">100% deterministic · No signup</span>
+        <span className="text-[11px] font-medium text-[#64748B]">100% deterministic · No signup</span>
       </div>
 
       {/* Target selection */}
       <div className="mt-5 space-y-3.5">
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-forest-900" htmlFor={`${formId}-university`}>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-[#10233F]" htmlFor={`${formId}-university`}>
             1. Select University
           </label>
           <select
@@ -239,7 +246,7 @@ function InstantAdmissionCheckContent({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-forest-900" htmlFor={`${formId}-program`}>
+          <label className="block text-xs font-semibold uppercase tracking-wider text-[#10233F]" htmlFor={`${formId}-program`}>
             2. Select Program
           </label>
           <select
@@ -259,12 +266,12 @@ function InstantAdmissionCheckContent({
         </div>
 
         {!selectedProgram && (
-          <div className="rounded-xl border border-forest-100 bg-forest-50/60 p-3.5 text-xs text-muted">
-            <span className="font-semibold text-forest-900">Quick explore: </span>
+          <div className="rounded-xl border border-[#D7E7FA] bg-[#F5F9FF] p-3.5 text-xs text-[#64748B]">
+            <span className="font-semibold text-[#10233F]">Quick explore: </span>
             <button
               type="button"
               onClick={() => selectDemoProgram("lut-software-systems-engineering")}
-              className="font-medium text-forest-700 underline decoration-forest-200 underline-offset-2 hover:text-forest-900"
+              className="font-medium text-[#1677FF] underline decoration-[#B7D2F0] underline-offset-2 hover:text-[#0F5EDB]"
             >
               LUT University · Software & Systems Engineering
             </button>
@@ -272,7 +279,7 @@ function InstantAdmissionCheckContent({
             <button
               type="button"
               onClick={() => selectDemoProgram("utwente-technical-computer-science")}
-              className="font-medium text-forest-700 underline decoration-forest-200 underline-offset-2 hover:text-forest-900"
+              className="font-medium text-[#1677FF] underline decoration-[#B7D2F0] underline-offset-2 hover:text-[#0F5EDB]"
             >
               Univ. of Twente · Technical CS
             </button>
@@ -284,68 +291,75 @@ function InstantAdmissionCheckContent({
       {selectedProgram && diagnosis && (
         <div className="mt-6 space-y-6">
           {/* Requirements Preview */}
-          <div className="rounded-xl border border-forest-100 bg-forest-50/70 p-4">
+          <div className="rounded-xl border border-[#D7E7FA] bg-[#F5F9FF] p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-forest-700">Verified Target Facts</span>
-              <span className="text-xs text-muted">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#1677FF]">Verified Target Facts</span>
+              <span className="text-xs text-[#64748B]">
                 {selectedProgram.country ?? "Unknown country"} · {selectedProgram.degreeLevel ?? "Bachelor"}
               </span>
             </div>
-            <h3 className="mt-1 text-lg font-semibold text-forest-900">
-              {selectedProgram.programName}
-            </h3>
+
+            {/* University First Hierarchy */}
+            <div className="mt-2">
+              <p className="text-base font-bold text-[#10233F] tracking-tight">
+                {selectedProgram.universityName}
+              </p>
+              <h3 className="mt-0.5 text-lg font-semibold text-[#1677FF]">
+                {selectedProgram.programName}
+              </h3>
+            </div>
 
             {/* High-value requirements grid */}
             <dl className="mt-3 grid gap-2 sm:grid-cols-2">
               {requirementFacts
                 .filter(({ key }) => key === "academic" || key === "ielts" || key === "sat")
                 .map((fact) => (
-                  <div key={fact.key} className="rounded-lg border border-forest-100 bg-white p-2.5 text-xs">
+                  <div key={fact.key} className="rounded-lg border border-[#D7E7FA] bg-white p-2.5 text-xs">
                     <div className="flex items-center justify-between gap-1">
                       <dt className="font-semibold text-forest-900">{fact.label}</dt>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${requirementStateStyles[fact.state]}`}>
                         {requirementStateLabels[fact.state]}
                       </span>
                     </div>
-                    <dd className="mt-1 font-medium text-ink truncate">{fact.value}</dd>
+                    <dd className="mt-1 font-medium text-[#10233F] truncate">{fact.value}</dd>
                   </div>
                 ))}
-              <div className="rounded-lg border border-forest-100 bg-white p-2.5 text-xs">
+              <div className="rounded-lg border border-[#D7E7FA] bg-white p-2.5 text-xs">
                 <div className="flex items-center justify-between gap-1">
                   <dt className="font-semibold text-forest-900">Tuition</dt>
-                  <span className="rounded-full bg-forest-100 px-2 py-0.5 text-[10px] font-bold text-forest-700">
+                  <span className="rounded-full bg-[#E7F6EC] px-2 py-0.5 text-[10px] font-bold text-[#16A34A] border border-[#BFE5CC]">
                     {selectedProgram.tuition !== null ? "Published" : "Unknown"}
                   </span>
                 </div>
-                <dd className="mt-1 font-medium text-ink truncate">{formatTuition(selectedProgram)}</dd>
+                <dd className="mt-1 font-medium text-[#10233F] truncate">{formatTuition(selectedProgram)}</dd>
               </div>
-              <div className="rounded-lg border border-forest-100 bg-white p-2.5 text-xs">
+              <div className="rounded-lg border border-[#D7E7FA] bg-white p-2.5 text-xs">
                 <div className="flex items-center justify-between gap-1">
                   <dt className="font-semibold text-forest-900">Deadline</dt>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                       diagnosis.timeline.deadline.status === "Published"
-                        ? "bg-forest-100 text-forest-700"
-                        : "bg-slate-100 text-slate-700"
+                        ? "bg-[#E7F6EC] text-[#16A34A] border border-[#BFE5CC]"
+                        : "bg-[#EEF3F9] text-[#5B6B81] border border-[#D7E7FA]"
                     }`}
                   >
                     {diagnosis.timeline.deadline.status}
                   </span>
                 </div>
-                <dd className="mt-1 font-medium text-ink truncate">{diagnosis.timeline.deadline.value}</dd>
+                <dd className="mt-1 font-medium text-[#10233F] truncate">{diagnosis.timeline.deadline.value}</dd>
               </div>
             </dl>
 
             {selectedProgram.sources.length > 0 && (
-              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-muted">
+              <div className="mt-3 flex items-center gap-1.5 text-[11px] text-[#64748B]">
                 <span>Official source:</span>
                 <a
                   href={selectedProgram.sources[0].url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-forest-700 underline decoration-forest-200 underline-offset-2 hover:text-forest-900"
+                  className="font-medium text-[#1677FF] underline decoration-[#B7D2F0] underline-offset-2 hover:text-[#0F5EDB]"
                 >
-                  <span className="uppercase text-[9px] text-muted mr-1">{sourceTypeLabels[selectedProgram.sources[0].type]}</span>
+                  <span className="uppercase text-[9px] text-[#64748B] mr-1">{sourceTypeLabels[selectedProgram.sources[0].type]}</span>
                   {selectedProgram.sources[0].title} ↗
                 </a>
               </div>
@@ -353,17 +367,17 @@ function InstantAdmissionCheckContent({
           </div>
 
           {/* Current State Inputs */}
-          <div className="border-t border-black/10 pt-5">
+          <div className="border-t border-[#D7E7FA] pt-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-forest-900">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-[#10233F]">
                 3. Tell us where you stand today
               </label>
-              <span className="text-[11px] text-muted">Blank = Unknown (never penalised)</span>
+              <span className="text-[11px] text-[#64748B]">Blank = Unknown (never penalised)</span>
             </div>
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-muted" htmlFor={`${formId}-stage`}>
+                <label className="block text-xs font-medium text-[#64748B]" htmlFor={`${formId}-stage`}>
                   Current study stage
                 </label>
                 <select
@@ -382,7 +396,7 @@ function InstantAdmissionCheckContent({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted" htmlFor={`${formId}-gpa`}>
+                <label className="block text-xs font-medium text-[#64748B]" htmlFor={`${formId}-gpa`}>
                   GPA (0–4 scale)
                 </label>
                 <input
@@ -392,7 +406,7 @@ function InstantAdmissionCheckContent({
                   max="4"
                   step="0.01"
                   placeholder="e.g. 3.5"
-                  className={`${inputClass} ${fieldErrors.gpa ? "border-red-500 focus:border-red-600" : ""}`}
+                  className={`${inputClass} ${fieldErrors.gpa ? "!border-red-500 focus:!border-red-600" : ""}`}
                   value={gpa ?? ""}
                   onChange={(e) => setGpa(numberOrNull(e.target.value))}
                   aria-invalid={Boolean(fieldErrors.gpa)}
@@ -406,7 +420,7 @@ function InstantAdmissionCheckContent({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted" htmlFor={`${formId}-ielts`}>
+                <label className="block text-xs font-medium text-[#64748B]" htmlFor={`${formId}-ielts`}>
                   IELTS score (0–9)
                 </label>
                 <input
@@ -416,7 +430,7 @@ function InstantAdmissionCheckContent({
                   max="9"
                   step="0.5"
                   placeholder="e.g. 6.0"
-                  className={`${inputClass} ${fieldErrors.ieltsScore ? "border-red-500 focus:border-red-600" : ""}`}
+                  className={`${inputClass} ${fieldErrors.ieltsScore ? "!border-red-500 focus:!border-red-600" : ""}`}
                   value={ieltsScore ?? ""}
                   onChange={(e) => setIeltsScore(numberOrNull(e.target.value))}
                   aria-invalid={Boolean(fieldErrors.ieltsScore)}
@@ -430,7 +444,7 @@ function InstantAdmissionCheckContent({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-muted" htmlFor={`${formId}-sat`}>
+                <label className="block text-xs font-medium text-[#64748B]" htmlFor={`${formId}-sat`}>
                   SAT score (400–1600)
                 </label>
                 <input
@@ -440,7 +454,7 @@ function InstantAdmissionCheckContent({
                   max="1600"
                   step="10"
                   placeholder="e.g. 1200"
-                  className={`${inputClass} ${fieldErrors.satScore ? "border-red-500 focus:border-red-600" : ""}`}
+                  className={`${inputClass} ${fieldErrors.satScore ? "!border-red-500 focus:!border-red-600" : ""}`}
                   value={satScore ?? ""}
                   onChange={(e) => setSatScore(numberOrNull(e.target.value))}
                   aria-invalid={Boolean(fieldErrors.satScore)}
@@ -456,12 +470,12 @@ function InstantAdmissionCheckContent({
           </div>
 
           {/* Instant Diagnosis Preview */}
-          <div className="border-t border-black/10 pt-5 space-y-4">
+          <div className="border-t border-[#D7E7FA] pt-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-forest-900">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-[#10233F]">
                 Deterministic Gap Diagnosis
               </h4>
-              <span className="text-[11px] text-muted">Immediate result</span>
+              <span className="text-[11px] text-[#64748B]">Immediate result</span>
             </div>
 
             {/* Criteria comparison rows */}
@@ -470,7 +484,7 @@ function InstantAdmissionCheckContent({
                 "isInvalid" in row && row.isInvalid ? (
                   <div
                     key={row.key}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50/60 p-3 text-xs"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50/70 p-3 text-xs"
                   >
                     <div>
                       <span className="font-semibold text-red-900">{row.label}</span>
@@ -485,12 +499,12 @@ function InstantAdmissionCheckContent({
                 ) : (
                   <div
                     key={row.key}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-forest-100 bg-white p-3 text-xs"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#D7E7FA] bg-white p-3 text-xs"
                   >
                     <div>
-                      <span className="font-semibold text-forest-900">{row.label}</span>
-                      <p className="mt-0.5 text-muted">
-                        Your value: <strong className="text-ink">{row.profileValue}</strong> · Required: <strong className="text-ink">{row.programValue}</strong>
+                      <span className="font-semibold text-[#10233F]">{row.label}</span>
+                      <p className="mt-0.5 text-[#64748B]">
+                        Your value: <strong className="text-[#10233F]">{row.profileValue}</strong> · Required: <strong className="text-[#10233F]">{row.programValue}</strong>
                       </p>
                     </div>
                     <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusStyles[row.status]}`}>
@@ -503,32 +517,32 @@ function InstantAdmissionCheckContent({
 
             {/* Biggest Gap */}
             {diagnosis.biggestGaps.length > 0 ? (
-              <div className="rounded-xl border border-amber-300 bg-sand-100 p-3.5 text-xs text-amber-950">
-                <p className="font-bold text-amber-900">Highest-value gap detected:</p>
+              <div className="rounded-xl border border-[#F5D9A8] bg-[#FFF3E0] p-3.5 text-xs text-[#C25E00]">
+                <p className="font-bold text-[#C25E00]">Highest-value gap detected:</p>
                 {diagnosis.biggestGaps.map((gap) => (
-                  <p key={gap.key} className="mt-1 leading-5">
-                    <strong>{gap.label}:</strong> {gap.detail}
+                  <p key={gap.key} className="mt-1 leading-5 text-amber-900">
+                    <strong className="text-[#C25E00]">{gap.label}:</strong> {gap.detail}
                   </p>
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-forest-100 bg-forest-50/50 p-3 text-xs text-muted leading-5">
+              <div className="rounded-xl border border-[#D7E7FA] bg-[#EDF4FD]/50 p-3 text-xs text-[#64748B] leading-5">
                 No confirmed gap appears in the values provided.
                 {unresolvedCount > 0 ? ` ${unresolvedCount} criteria remain unknown or need verification.` : " This is not an admission guarantee."}
               </div>
             )}
 
-            {/* Next Action */}
+            {/* Next Action - Dark Navy Action Card */}
             {diagnosis.nextActions.length > 0 && (
-              <div className="rounded-xl border border-forest-200 bg-forest-900 p-3.5 text-white">
+              <div className="rounded-xl border border-[#0E2647] bg-[#081A33] p-4 text-white shadow-subtle">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-forest-100">Recommended Next Move</span>
-                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold text-white">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#38BDF8]">Recommended Next Move</span>
+                  <span className="rounded-full bg-[#1677FF] px-2.5 py-0.5 text-[10px] font-bold text-white">
                     {diagnosis.nextActions[0].basis}
                   </span>
                 </div>
-                <p className="mt-1 text-sm font-semibold">{diagnosis.nextActions[0].title}</p>
-                <p className="mt-1 text-xs text-forest-100/90 leading-5">
+                <p className="mt-1.5 text-sm font-semibold text-white">{diagnosis.nextActions[0].title}</p>
+                <p className="mt-1 text-xs text-[#9FB6D9] leading-relaxed">
                   {diagnosis.nextActions[0].description}
                 </p>
               </div>
@@ -536,14 +550,14 @@ function InstantAdmissionCheckContent({
           </div>
 
           {/* Primary CTA */}
-          <div className="border-t border-black/10 pt-5">
+          <div className="border-t border-[#D7E7FA] pt-5">
             <button
               type="submit"
               disabled={hasInvalidScores}
-              className={`landing-button flex min-h-12 w-full items-center justify-center rounded-full px-6 text-sm font-semibold transition ${
+              className={`landing-button flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-semibold transition ${
                 hasInvalidScores
                   ? "opacity-50 cursor-not-allowed"
-                  : "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-700"
+                  : "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1677FF]"
               }`}
             >
               Build my full plan <span aria-hidden="true" className="landing-button-arrow ml-2 font-bold">↗</span>
@@ -553,7 +567,7 @@ function InstantAdmissionCheckContent({
                 Correct the invalid score inputs above to continue.
               </p>
             ) : (
-              <p className="mt-2 text-center text-[11px] text-muted leading-4">
+              <p className="mt-2 text-center text-[11px] text-[#64748B] leading-4">
                 Your target, GPA, and test scores will be saved. You will continue directly into Missing Details without repeating questions.
               </p>
             )}
