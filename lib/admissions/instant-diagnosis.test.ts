@@ -83,6 +83,35 @@ test("incompatible academic scales do not fabricate a numeric gap", () => {
   assert.equal(academic.status, "Not comparable");
   assert.match(academic.detail, /different scales/);
   assert.equal(result.biggestGaps.some(({ key }) => key === "academic"), false);
+  assert.equal(result.nextActions.some(({ basis, relatedRequirement }) => basis === "Confirmed gap" && relatedRequirement === "Academic requirement"), false);
+});
+
+test("timeline shows the supplied study stage and verified deadline", () => {
+  const result = buildInstantDiagnosis(profile, byId("northbridge-cs"));
+
+  assert.deepEqual(result.timeline.currentStudyStage, {
+    value: "Grade 11",
+    status: "Provided",
+    detail: "Provided for context; study stage does not change deterministic matching.",
+  });
+  assert.equal(result.timeline.deadline.value, "2027-02-01");
+  assert.equal(result.timeline.deadline.status, "Published");
+});
+
+test("unknown deadline remains Unknown and needs verification", () => {
+  const result = buildInstantDiagnosis(profile, { ...byId("northbridge-cs"), deadline: null });
+
+  assert.equal(result.timeline.deadline.value, "Unknown");
+  assert.equal(result.timeline.deadline.status, "Needs verification");
+});
+
+test("ambiguous deadline text is preserved without a fabricated cycle or countdown", () => {
+  const result = buildInstantDiagnosis(profile, getProgramById("aitu-computer-science")!);
+
+  assert.equal(result.timeline.deadline.value, "August 24 (year not specified)");
+  assert.equal(result.timeline.deadline.status, "Published");
+  assert.equal("timeRemaining" in result.timeline, false);
+  assert.equal("expectedApplicationCycle" in result.timeline, false);
 });
 
 test("next actions are deterministic, limited, and traceable to factual inputs", () => {
@@ -95,6 +124,17 @@ test("next actions are deterministic, limited, and traceable to factual inputs",
   assert.ok(first.length >= 3 && first.length <= 5);
   assert.equal(first.some(({ basis, relatedRequirement }) => basis === "Confirmed gap" && relatedRequirement === "Academic requirement"), true);
   assert.equal(first.every(({ basis, relatedRequirement }) => Boolean(basis && relatedRequirement)), true);
+});
+
+test("gap, strong, and unknown-data profiles retain three to five actions", () => {
+  const program = byId("northbridge-cs");
+  const scenarios = [
+    buildInstantDiagnosis({ ...profile, gpa: 2.8, ieltsScore: 5.5 }, program),
+    buildInstantDiagnosis({ ...profile, gpa: 3.5, ieltsScore: 7 }, program),
+    buildInstantDiagnosis(profile, { ...program, academicRequirement: null, ieltsRequirement: null, satRequirement: null }),
+  ];
+
+  assert.equal(scenarios.every(({ nextActions }) => nextActions.length >= 3 && nextActions.length <= 5), true);
 });
 
 test("instant diagnosis remains useful without identity or account data", () => {

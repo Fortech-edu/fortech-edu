@@ -15,6 +15,11 @@ const statusStyles: Record<ComparisonStatus, string> = {
   "Not required": "bg-forest-50 text-forest-700",
   "Not comparable": "bg-slate-100 text-slate-700",
 };
+const timelineStatusStyles = {
+  Provided: "bg-forest-100 text-forest-700",
+  Published: "bg-forest-100 text-forest-700",
+  "Needs verification": "bg-slate-100 text-slate-700",
+} as const;
 
 function show(value: string | number | null) {
   return value === null || value === "" ? "Unknown" : String(value);
@@ -100,6 +105,25 @@ export function InstantDiagnosisResult({ profile, program }: { profile: StudentP
             <div key={label} className="rounded-xl bg-forest-50 p-3">
               <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</dt>
               <dd className="mt-1 font-semibold text-ink">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="field-group p-5 sm:p-6" aria-labelledby="instant-timeline-title">
+        <h2 id="instant-timeline-title" className="text-xl font-semibold text-forest-900">Timeline</h2>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          {([
+            ["Current study stage", result.timeline.currentStudyStage],
+            ["Application deadline", result.timeline.deadline],
+          ] as const).map(([label, fact]) => (
+            <div key={label} className="rounded-xl border border-forest-100 bg-white p-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <dt className="text-sm font-semibold text-forest-900">{label}</dt>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${timelineStatusStyles[fact.status]}`}>{fact.status}</span>
+              </div>
+              <dd className="mt-2 font-semibold text-ink">{fact.value}</dd>
+              <p className="mt-1 text-sm leading-6 text-muted">{fact.detail}</p>
             </div>
           ))}
         </dl>
