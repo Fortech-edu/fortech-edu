@@ -40,8 +40,8 @@ function isChangedInput(value: unknown) {
     );
   }
   return (
-    ["intendedField", "targetDegree", "ieltsScore", "satScore"].includes(value.input) &&
-    (value.input === "ieltsScore" || value.input === "satScore"
+    ["intendedField", "targetDegree", "gpa", "ieltsScore", "satScore"].includes(value.input) &&
+    (value.input === "gpa" || value.input === "ieltsScore" || value.input === "satScore"
       ? isNullableNumber(value.previousValue) && isNullableNumber(value.nextValue)
       : isNullableString(value.previousValue) && isNullableString(value.nextValue))
   );
@@ -62,10 +62,72 @@ function isProgramChange(value: unknown) {
   );
 }
 
+const COMPARISON_STATUSES = ["Match", "Action needed", "Needs verification", "Not required", "Not comparable"];
+const ROADMAP_PRIORITIES = ["high", "medium", "low"];
+/** Must match the real ProfileProgramCriterion["key"] domain. */
+const CRITERION_KEYS = ["field", "academic", "ielts", "sat", "languageOfInstruction", "tuition", "timeline"];
+
+function isTargetCriterionChange(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.key === "string" &&
+    CRITERION_KEYS.includes(value.key) &&
+    typeof value.label === "string" &&
+    COMPARISON_STATUSES.includes(String(value.previousStatus)) &&
+    COMPARISON_STATUSES.includes(String(value.nextStatus)) &&
+    typeof value.previousValue === "string" &&
+    typeof value.nextValue === "string"
+  );
+}
+
+function isRoadmapTaskChange(value: unknown) {
+  if (!isRecord(value) || typeof value.taskId !== "string" || typeof value.title !== "string") return false;
+  const change = String(value.change);
+  if (change === "added") return ROADMAP_PRIORITIES.includes(String(value.priority));
+  if (change === "removed") return ROADMAP_PRIORITIES.includes(String(value.previousPriority));
+  if (change === "priority_changed") {
+    return (
+      ROADMAP_PRIORITIES.includes(String(value.previousPriority)) &&
+      ROADMAP_PRIORITIES.includes(String(value.nextPriority))
+    );
+  }
+  return false;
+}
+
+function isNextActionChange(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    (value.previousTitle === null || typeof value.previousTitle === "string") &&
+    (value.nextTitle === null || typeof value.nextTitle === "string")
+  );
+}
+
+function isTargetChangeRecord(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.previousProgramId === "string" &&
+    typeof value.nextProgramId === "string" &&
+    typeof value.previousName === "string" &&
+    typeof value.nextName === "string"
+  );
+}
+
+function isTargetPlan(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    Array.isArray(value.criterionChanges) &&
+    value.criterionChanges.every(isTargetCriterionChange) &&
+    Array.isArray(value.roadmapTaskChanges) &&
+    value.roadmapTaskChanges.every(isRoadmapTaskChange) &&
+    (value.nextActionChange === null || isNextActionChange(value.nextActionChange)) &&
+    (value.targetChange === undefined || isTargetChangeRecord(value.targetChange))
+  );
+}
+
 function isChangeImpact(value: unknown): value is ChangeImpact {
   if (!isRecord(value) || !isRecord(value.summary)) return false;
   const summary = value.summary;
-  return (
+  if (!(
     Array.isArray(value.changedInputs) &&
     value.changedInputs.every(isChangedInput) &&
     Array.isArray(value.programChanges) &&
@@ -73,31 +135,58 @@ function isChangeImpact(value: unknown): value is ChangeImpact {
     ["entered", "removed", "movedUp", "movedDown", "eligibilityChanged"].every(
       (key) => Number.isInteger(summary[key]) && Number(summary[key]) >= 0,
     )
-  );
+  )) return false;
+  return value.targetPlan === undefined || isTargetPlan(value.targetPlan);
 }
 
-export function parseEditBaseline(raw: string | null): StudentProfile | null {
+/**
+ * The state an edit started from: the completed profile plus the target that
+ * was active at that moment. `selectedProgramId` is required so a target
+ * switch between edits can never be compared as if the new target had always
+ * been selected. Baselines stored by older versions contain only the profile
+ * and still parse, with a null target identity.
+ */
+export type EditBaseline = {
+  profile: StudentProfile;
+  selectedProgramId: string | null;
+};
+
+export function parseEditBaseline(raw: string | null): EditBaseline | null {
   if (raw === null) return null;
   try {
     const value: unknown = JSON.parse(raw);
-    return isStudentProfile(value) ? value : null;
+    if (!isRecord(value)) return null;
+    if (
+      value.version === 1 &&
+      isStudentProfile(value.profile) &&
+      isNullableString(value.selectedProgramId)
+    ) {
+      return { profile: value.profile, selectedProgramId: value.selectedProgramId };
+    }
+    if (isStudentProfile(value)) return { profile: value, selectedProgramId: null };
+    return null;
   } catch {
     return null;
   }
 }
 
-export function saveEditBaseline(profile: StudentProfile, storage?: SessionStore) {
+export function saveEditBaseline(
+  profile: StudentProfile,
+  storage?: SessionStore,
+  selectedProgramId: string | null = null,
+) {
   try {
     const target = sessionStore(storage);
     if (!target) return false;
-    target.setItem(EDIT_BASELINE_STORAGE_KEY, JSON.stringify(profile));
+    const baseline = { version: 1 as const, profile, selectedProgramId };
+    target.setItem(EDIT_BASELINE_STORAGE_KEY, JSON.stringify(baseline));
     return true;
   } catch {
     return false;
   }
 }
 
-export function loadEditBaseline(storage?: SessionStore) {
+export function loadEditBaseline(storage?: SessionStore): EditBaseline | null {
   try {
     return parseEditBaseline(sessionStore(storage)?.getItem(EDIT_BASELINE_STORAGE_KEY) ?? null);
   } catch {

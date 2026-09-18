@@ -1,9 +1,18 @@
 import type {
   EligibilityStatus,
   Recommendation,
+  RoadmapPriority,
   ScoreBreakdown,
   StudentProfile,
+  UniversityProgram,
 } from "../../types/admissions.ts";
+import { generateRoadmap, getNextAction } from "./roadmap.ts";
+import { assessProgram } from "./recommend.ts";
+import {
+  buildProfileProgramCriteria,
+  canonicalEvidenceOrder,
+  type ProfileProgramCriterion,
+} from "./presentation.ts";
 
 export type ChangedProfileInput =
   | {
@@ -19,7 +28,7 @@ export type ChangedProfileInput =
       nextCurrency: string | null;
     }
   | {
-      input: "ieltsScore" | "satScore";
+      input: "gpa" | "ieltsScore" | "satScore";
       previousValue: number | null;
       nextValue: number | null;
     }
@@ -74,6 +83,61 @@ export type ProgramChange = {
   reasonCodes: ChangeReasonCode[];
 };
 
+export type TargetCriterionChange = {
+  key: ProfileProgramCriterion["key"];
+  label: string;
+  previousStatus: ProfileProgramCriterion["status"];
+  nextStatus: ProfileProgramCriterion["status"];
+  previousValue: string;
+  nextValue: string;
+};
+
+export type RoadmapTaskChange =
+  | {
+      change: "added";
+      taskId: string;
+      title: string;
+      priority: RoadmapPriority;
+    }
+  | {
+      change: "removed";
+      taskId: string;
+      title: string;
+      previousPriority: RoadmapPriority;
+    }
+  | {
+      change: "priority_changed";
+      taskId: string;
+      title: string;
+      previousPriority: RoadmapPriority;
+      nextPriority: RoadmapPriority;
+    };
+
+export type NextActionChange = {
+  previousTitle: string | null;
+  nextTitle: string | null;
+};
+
+export type TargetChangeRecord = {
+  previousProgramId: string;
+  nextProgramId: string;
+  previousName: string;
+  nextName: string;
+};
+
+export type TargetPlanChange = {
+  /**
+   * Present only when the selected target changed between the baseline and the
+   * saved profile. Criterion/roadmap/Next Action diffs stay empty in that case:
+   * the previous plan was built for a different target, so a cross-target
+   * before/after comparison would be fabricated.
+   */
+  targetChange?: TargetChangeRecord;
+  criterionChanges: TargetCriterionChange[];
+  roadmapTaskChanges: RoadmapTaskChange[];
+  nextActionChange: NextActionChange | null;
+};
+
 export type ChangeImpact = {
   changedInputs: ChangedProfileInput[];
   programChanges: ProgramChange[];
@@ -84,6 +148,8 @@ export type ChangeImpact = {
     movedDown: number;
     eligibilityChanged: number;
   };
+  /** Deterministic selected-target requirement, roadmap, and Next Action diff. Optional for stored-payload backward safety. */
+  targetPlan?: TargetPlanChange;
 };
 
 const fitComponents: FitComponent[] = [
@@ -183,7 +249,7 @@ function changedInputs(
     changes.push({ input: "preferredCountries", ...countryChanges });
   }
 
-  for (const input of ["ieltsScore", "satScore"] as const) {
+  for (const input of ["gpa", "ieltsScore", "satScore"] as const) {
     if (previousProfile[input] !== nextProfile[input]) {
       changes.push({
         input,
@@ -356,4 +422,146 @@ export function buildChangeImpact(
       ).length,
     },
   };
+}
+
+/**
+ * Deterministic diff of the selected target's requirement states, roadmap
+ * tasks, and Next Action between two profile states. Reuses the existing
+ * criteria, roadmap, and Next Action generators; owns no new comparisons.
+ *
+ * `completedTaskIds` must be the same stored set for both sides so the Next
+ * Action difference reflects the profile change, not unrelated progress.
+ */
+export function buildTargetPlanImpact(
+  previousProfile: StudentProfile,
+  nextProfile: StudentProfile,
+  target: UniversityProgram,
+  completedTaskIds: readonly string[] = [],
+): TargetPlanChange {
+  const previousCriteria = new Map(
+    buildProfileProgramCriteria(previousProfile, assessProgram(previousProfile, target)).map(
+      (criterion) => [criterion.key, criterion],
+    ),
+  );
+  const nextCriteria = new Map(
+    buildProfileProgramCriteria(nextProfile, assessProgram(nextProfile, target)).map(
+      (criterion) => [criterion.key, criterion],
+    ),
+  );
+
+  const criterionChanges: TargetCriterionChange[] = [];
+  for (const [key, nextCriterion] of nextCriteria) {
+    const previousCriterion = previousCriteria.get(key);
+    if (previousCriterion === undefined || previousCriterion.status === nextCriterion.status) {
+      continue;
+    }
+    criterionChanges.push({
+      key,
+      label: nextCriterion.label,
+      previousStatus: previousCriterion.status,
+      nextStatus: nextCriterion.status,
+      previousValue: previousCriterion.profileValue,
+      nextValue: nextCriterion.profileValue,
+    });
+  }
+  criterionChanges.sort(
+    (a, b) => canonicalEvidenceOrder[a.key] - canonicalEvidenceOrder[b.key],
+  );
+
+  const previousTasks = generateRoadmap(previousProfile, target);
+  const nextTasks = generateRoadmap(nextProfile, target);
+  const previousTasksById = new Map(previousTasks.map((item) => [item.id, item]));
+  const nextTasksById = new Map(nextTasks.map((item) => [item.id, item]));
+
+  const roadmapTaskChanges: RoadmapTaskChange[] = [];
+  for (const [taskId, previousTask] of previousTasksById) {
+    const nextTask = nextTasksById.get(taskId);
+    if (!nextTask) {
+      roadmapTaskChanges.push({
+        change: "removed",
+        taskId,
+        title: previousTask.title,
+        previousPriority: previousTask.priority,
+      });
+    } else if (nextTask.priority !== previousTask.priority) {
+      roadmapTaskChanges.push({
+        change: "priority_changed",
+        taskId,
+        title: nextTask.title,
+        previousPriority: previousTask.priority,
+        nextPriority: nextTask.priority,
+      });
+    }
+  }
+  for (const [taskId, nextTask] of nextTasksById) {
+    if (!previousTasksById.has(taskId)) {
+      roadmapTaskChanges.push({
+        change: "added",
+        taskId,
+        title: nextTask.title,
+        priority: nextTask.priority,
+      });
+    }
+  }
+
+  const knownTaskIds = new Set([...previousTasksById.keys(), ...nextTasksById.keys()]);
+  const relevantCompletedIds = completedTaskIds.filter((id) => knownTaskIds.has(id));
+  const previousNextAction = getNextAction(previousTasks, relevantCompletedIds);
+  const nextNextAction = getNextAction(nextTasks, relevantCompletedIds);
+  const nextActionChanged =
+    (previousNextAction?.id ?? null) !== (nextNextAction?.id ?? null);
+
+  return {
+    criterionChanges,
+    roadmapTaskChanges,
+    nextActionChange: nextActionChanged
+      ? {
+          previousTitle: previousNextAction?.title ?? null,
+          nextTitle: nextNextAction?.title ?? null,
+        }
+      : null,
+  };
+}
+
+/**
+ * Truthful record for a selected-target change. The previous plan was built
+ * against a different program, so no criterion/roadmap/Next Action
+ * before-vs-after claims are made — only the identity change is reported.
+ * Recommendation-level consequences remain available through programChanges.
+ */
+export function buildTargetChangeImpact(
+  previousTarget: UniversityProgram,
+  nextTarget: UniversityProgram,
+): TargetPlanChange {
+  const displayName = (program: UniversityProgram) =>
+    `${program.programName} @ ${program.universityName}`;
+  return {
+    targetChange: {
+      previousProgramId: previousTarget.id,
+      nextProgramId: nextTarget.id,
+      previousName: displayName(previousTarget),
+      nextName: displayName(nextTarget),
+    },
+    criterionChanges: [],
+    roadmapTaskChanges: [],
+    nextActionChange: null,
+  };
+}
+
+/**
+ * A profile edit is a meaningful Change Impact when at least one deterministic
+ * consequence exists: recommendation movement, a target requirement state
+ * change, a roadmap task change, a Next Action change, or a selected-target
+ * change. A changed input with no downstream effect is not shown as impact.
+ */
+export function hasMeaningfulImpact(impact: ChangeImpact): boolean {
+  if (impact.programChanges.length > 0) return true;
+  const targetPlan = impact.targetPlan;
+  if (!targetPlan) return false;
+  if (targetPlan.targetChange) return true;
+  return (
+    targetPlan.criterionChanges.length > 0 ||
+    targetPlan.roadmapTaskChanges.length > 0 ||
+    targetPlan.nextActionChange !== null
+  );
 }

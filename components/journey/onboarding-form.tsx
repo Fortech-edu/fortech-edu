@@ -3,7 +3,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { getProgramById, programs } from "../../data/programs.ts";
-import { buildChangeImpact } from "../../lib/admissions/change-impact.ts";
+import {
+  buildChangeImpact,
+  buildTargetChangeImpact,
+  buildTargetPlanImpact,
+  hasMeaningfulImpact,
+  type ChangeImpact,
+  type TargetPlanChange,
+} from "../../lib/admissions/change-impact.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import {
   applyTargetProfileDefaults,
@@ -18,6 +25,7 @@ import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadStoredProfile, saveStoredProfile } from "../../lib/storage/profile.ts";
 import type { OnboardingFlowStage, StoredProfile } from "../../lib/storage/profile.ts";
 import { loadSelectedProgram, saveSelectedProgram } from "../../lib/storage/selection.ts";
+import { loadProgress } from "../../lib/storage/progress.ts";
 import {
   clearEditBaseline,
   clearRecentChangeImpact,
@@ -226,12 +234,13 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
   const mounted = useRef(false);
 
   useEffect(() => {
-    if (initial?.completed) saveEditBaseline(initial.profile);
+    if (initial?.completed) saveEditBaseline(initial.profile, undefined, initialTarget?.id ?? null);
     else if (!initial) {
       clearEditBaseline();
       clearRecentChangeImpact();
     }
-  }, [initial]);
+    // Both values are fixed for this editor instance: it is keyed on them.
+  }, [initial, initialTarget?.id]);
 
   useEffect(() => {
     if (!mounted.current) {
@@ -361,15 +370,28 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
     }
 
     setCompleted(true);
-    const previousProfile = loadEditBaseline();
-    if (previousProfile) {
+    const baseline = loadEditBaseline();
+    if (baseline) {
+      const previousProfile = baseline.profile;
       const impact = buildChangeImpact(
         previousProfile,
         profile,
         getPrimaryMatches(previousProfile),
         getPrimaryMatches(profile),
       );
-      if (impact.programChanges.length > 0) saveRecentChangeImpact(impact);
+      const target = getProgramById(loadSelectedProgram());
+      const previousTarget = getProgramById(baseline.selectedProgramId);
+      let targetPlan: TargetPlanChange | undefined;
+      if (target && previousTarget && previousTarget.id !== target.id) {
+        // The previous plan was built for a different target: report the
+        // target change truthfully instead of comparing the old profile
+        // against the new target as if it had always been selected.
+        targetPlan = buildTargetChangeImpact(previousTarget, target);
+      } else if (target) {
+        targetPlan = buildTargetPlanImpact(previousProfile, profile, target, loadProgress().byProgram[target.id] ?? []);
+      }
+      const fullImpact: ChangeImpact = targetPlan ? { ...impact, targetPlan } : impact;
+      if (hasMeaningfulImpact(fullImpact)) saveRecentChangeImpact(fullImpact);
       else clearRecentChangeImpact();
     } else {
       clearRecentChangeImpact();
@@ -711,7 +733,17 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <p className="mt-2 leading-6 text-muted">Review the information that will shape your deterministic analysis.</p>
                 </div>
 
-                <ReviewSection title="Target" onEdit={() => { setEditingFromReview(true); setEntryStage("target"); }}>
+                <ReviewSection
+                  title="Target"
+                  onEdit={() => {
+                    // Keep the draft un-completed during the edit so a refresh
+                    // cannot reseed the change-impact baseline from a
+                    // mid-edit state that already has the new target.
+                    setCompleted(false);
+                    setEditingFromReview(true);
+                    setEntryStage("target");
+                  }}
+                >
                   <p className="text-lg font-semibold text-ink">{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}</p>
                   <p className="mt-1 text-sm text-muted">{target?.country ?? "Country unknown"}</p>
                 </ReviewSection>

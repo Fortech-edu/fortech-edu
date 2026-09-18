@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { getProgramById } from "../../data/programs.ts";
+import type { ChangeImpact, RoadmapTaskChange } from "../../lib/admissions/change-impact.ts";
+import { impactCounts, presentChangedInput } from "../../lib/admissions/change-impact-presentation.ts";
 import {
   diagnoseTarget,
   type DiagnosisVerificationItem,
@@ -9,9 +12,10 @@ import {
 } from "../../lib/admissions/diagnosis.ts";
 import type { ComparisonStatus, ProfileProgramCriterion } from "../../lib/admissions/presentation.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
+import { clearRecentChangeImpact, loadRecentChangeImpact } from "../../lib/storage/change-impact.ts";
 import { loadStoredProfile } from "../../lib/storage/profile.ts";
 import { loadSelectedProgram } from "../../lib/storage/selection.ts";
-import type { RoadmapItem, StudentProfile, UniversityProgram } from "../../types/admissions.ts";
+import type { RoadmapItem, RoadmapPriority, StudentProfile, UniversityProgram } from "../../types/admissions.ts";
 import { DiagnosisEnhancement } from "../ai/enhancements.tsx";
 import { ProfileProgramComparison } from "../matches/program-presentation.tsx";
 
@@ -56,6 +60,134 @@ export function DiagnosisView() {
   return <DiagnosisContent profile={stored.profile} program={program} diagnosis={diagnosis} />;
 }
 
+const priorityChangeLabels: Record<RoadmapPriority, string> = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+};
+
+const criterionDisplayLabels: Record<ProfileProgramCriterion["key"], string> = {
+  field: "Study field",
+  academic: "Academic requirement",
+  ielts: "IELTS requirement",
+  sat: "SAT requirement",
+  languageOfInstruction: "Language of instruction",
+  tuition: "Tuition / budget",
+  timeline: "Intake / deadline",
+};
+
+function roadmapTaskChangeCopy(change: RoadmapTaskChange): string {
+  if (change.change === "added") return `New step: ${change.title}.`;
+  if (change.change === "priority_changed") {
+    return `${change.title} is now ${priorityChangeLabels[change.nextPriority]} priority.`;
+  }
+  return change.previousPriority === "high"
+    ? `${change.title} is no longer a high-priority task.`
+    : `${change.title} is no longer part of your roadmap.`;
+}
+
+function RecentImpactPanel({ impact }: { impact: ChangeImpact }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+
+  const targetPlan = impact.targetPlan;
+  const targetChange = targetPlan?.targetChange ?? null;
+  const inputChanges = impact.changedInputs.slice(0, 3).map(presentChangedInput);
+  const criterionChanges = (targetPlan?.criterionChanges ?? []).slice(0, 3);
+  const roadmapChanges = (targetPlan?.roadmapTaskChanges ?? []).slice(0, 2);
+  const nextActionChange = targetPlan?.nextActionChange ?? null;
+  const matchCounts = impactCounts(impact);
+  const hasContent =
+    targetChange !== null ||
+    inputChanges.length > 0 ||
+    criterionChanges.length > 0 ||
+    roadmapChanges.length > 0 ||
+    nextActionChange !== null ||
+    matchCounts.length > 0;
+  if (!hasContent) return null;
+
+  return (
+    <section className="accent-section p-5 sm:p-7" aria-labelledby="recent-impact-title">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Change impact</p>
+          <h2 id="recent-impact-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Your plan updated</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">Recalculated from your saved profile. This comparison expires after a while.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            clearRecentChangeImpact();
+            setDismissed(true);
+          }}
+          className="min-h-11 rounded-full px-3 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:decoration-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
+        >
+          Dismiss
+        </button>
+      </div>
+
+      {targetChange ? (
+        <p className="mt-5 text-sm font-semibold leading-6 text-forest-900">
+          Target changed: {targetChange.previousName} <span aria-hidden="true">→</span> {targetChange.nextName}
+        </p>
+      ) : null}
+
+      {inputChanges.length ? (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {inputChanges.map(({ label, previous, next }) => (
+            <span key={label} className="inline-flex items-center gap-2 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-forest-900">
+              {label}
+              <span aria-hidden="true">·</span>
+              <span>
+                {previous ?? next}
+                {previous && next ? <span aria-hidden="true"> → </span> : null}
+                {previous && next ? next : null}
+              </span>
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      {criterionChanges.length ? (
+        <ul className="mt-5 space-y-2">
+          {criterionChanges.map((change) => (
+            <li key={change.key} className="flex flex-wrap items-center gap-2 text-sm">
+              <strong className="text-forest-900">{criterionDisplayLabels[change.key]}:</strong>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[change.previousStatus]}`}>{change.previousStatus}</span>
+              <span aria-hidden="true" className="font-semibold text-muted">→</span>
+              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusStyles[change.nextStatus]}`}>{change.nextStatus}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {nextActionChange ? (
+        <p className="mt-5 text-sm font-semibold leading-6 text-forest-900">
+          {nextActionChange.previousTitle && nextActionChange.nextTitle
+            ? <>Next action changed: {nextActionChange.previousTitle} <span aria-hidden="true">→</span> {nextActionChange.nextTitle}</>
+            : nextActionChange.nextTitle
+              ? <>Next action: {nextActionChange.nextTitle}</>
+              : <>All current roadmap steps are complete.</>}
+        </p>
+      ) : null}
+
+      {roadmapChanges.length ? (
+        <ul className="mt-3 space-y-1.5">
+          {roadmapChanges.map((change) => (
+            <li key={`${change.change}:${change.taskId}`} className="text-sm leading-6 text-ink">{roadmapTaskChangeCopy(change)}</li>
+          ))}
+        </ul>
+      ) : null}
+
+      {matchCounts.length ? (
+        <p className="mt-5 border-t border-sand-300 pt-4 text-sm font-semibold text-forest-900">
+          Match updates: {matchCounts.join(" · ")}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function DiagnosisContent({
   profile,
   program,
@@ -66,10 +198,13 @@ function DiagnosisContent({
   diagnosis: TargetDiagnosis;
 }) {
   const { profileDiagnosis, recommendation } = diagnosis;
+  const recentImpact = loadRecentChangeImpact();
 
   return (
     <div className="diagnosis-view space-y-8">
       <TargetSummary profile={profile} program={program} />
+
+      {recentImpact ? <RecentImpactPanel impact={recentImpact} /> : null}
 
       <div className="editorial-section p-6 sm:p-8">
         <ProfileProgramComparison profile={profile} recommendation={recommendation} criteria={diagnosis.requirementCoverage} eyebrow="Requirement coverage" />
