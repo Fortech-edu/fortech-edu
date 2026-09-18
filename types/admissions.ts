@@ -93,6 +93,12 @@ export type Diagnosis = {
 
 export type RoadmapPhase = "now" | "prepare" | "apply";
 
+/** Deterministic student-facing time horizon, derived from phase and task type. */
+export type RoadmapHorizon = "now" | "next_30_days" | "this_semester" | "before_application";
+
+/** Qualitative deterministic priority derived from factual requirement state. */
+export type RoadmapPriority = "high" | "medium" | "low";
+
 export type RoadmapItem = {
   id: string;
   title: string;
@@ -103,4 +109,8 @@ export type RoadmapItem = {
   type: "requirement" | "verification" | "preparation" | "application";
   officialSourceLabel: string | null;
   officialSourceUrl: string | null;
+  horizon: RoadmapHorizon;
+  priority: RoadmapPriority;
+  reason: string;
+  relatedRequirement: string;
 };

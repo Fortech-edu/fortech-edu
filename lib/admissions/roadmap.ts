@@ -1,23 +1,66 @@
 import type {
   ProgramSource,
   Requirement,
+  RoadmapHorizon,
   RoadmapItem,
   RoadmapPhase,
+  RoadmapPriority,
   StudentProfile,
   UniversityProgram,
 } from "../../types/admissions.ts";
-import { buildProfileProgramCriteria, formatTuition } from "./presentation.ts";
+import {
+  buildProfileProgramCriteria,
+  formatTuition,
+  type ProfileProgramCriterion,
+} from "./presentation.ts";
 import { assessProgram } from "./recommend.ts";
 
-export const roadmapPhases: ReadonlyArray<{
-  id: RoadmapPhase;
+export const roadmapHorizons: ReadonlyArray<{
+  id: RoadmapHorizon;
   label: string;
   description: string;
 }> = [
-  { id: "now", label: "Now", description: "Resolve known gaps and verify requirements that are still unclear." },
-  { id: "prepare", label: "Prepare", description: "Confirm the official checklist, then assemble only verified materials." },
-  { id: "apply", label: "Apply", description: "Recheck timing and follow the university's official application instructions." },
+  { id: "now", label: "Now", description: "Confirmed requirement gaps to act on first." },
+  { id: "next_30_days", label: "Next 30 days", description: "Verification work that unblocks preparation." },
+  { id: "this_semester", label: "This semester", description: "Plans and materials that take longer to complete." },
+  { id: "before_application", label: "Before application", description: "Final checks and submission through the official route." },
 ];
+
+const priorityRank: Record<RoadmapPriority, number> = { high: 0, medium: 1, low: 2 };
+
+const GAP_TASK_CRITERION: Partial<Record<string, "academic" | "ielts" | "sat">> = {
+  "improve-academics": "academic",
+  "prepare-ielts": "ielts",
+  "take-ielts": "ielts",
+  "prepare-sat": "sat",
+  "take-sat": "sat",
+};
+
+const LOW_PRIORITY_TASKS = new Set(["review-application", "review-tuition"]);
+
+const RELATED_REQUIREMENT: Record<string, string> = {
+  "improve-academics": "Academic requirement",
+  "verify-academic-score": "Academic requirement",
+  "verify-academic": "Academic requirement",
+  "prepare-ielts": "IELTS",
+  "take-ielts": "IELTS",
+  "verify-ielts": "IELTS",
+  "prepare-sat": "SAT",
+  "take-sat": "SAT",
+  "verify-sat": "SAT",
+  "plan-budget": "Tuition / budget",
+  "review-tuition": "Tuition / budget",
+  "verify-tuition": "Tuition / budget",
+  "verify-documents": "Application documents",
+  "prepare-documents": "Application documents",
+  "prepare-motivation-letter": "Application documents",
+  "prepare-recommendations": "Application documents",
+  "verify-deadline": "Application deadline",
+  "review-deadline": "Application deadline",
+  "review-application": "Application instructions",
+  "finalize-application": "Application preparation",
+  "submit-application": "Application preparation",
+};
 
 function sourceFor(program: UniversityProgram, ...preferredTypes: ProgramSource["type"][]) {
   return preferredTypes
@@ -45,6 +88,10 @@ function task(
     type,
     officialSourceLabel: source?.title ?? null,
     officialSourceUrl: source?.url ?? null,
+    horizon: "now",
+    priority: "medium",
+    reason: "",
+    relatedRequirement: "Application preparation",
   };
 }
 
@@ -95,6 +142,108 @@ function scoreTasks(
   }
 
   return items;
+}
+
+function horizonFor(phase: RoadmapPhase, type: RoadmapItem["type"]): RoadmapHorizon {
+  if (phase === "apply") return "before_application";
+  if (phase === "prepare") return "this_semester";
+  return type === "requirement" ? "now" : "next_30_days";
+}
+
+function priorityFor(
+  shortId: string,
+  criteria: ReadonlyMap<ProfileProgramCriterion["key"], ProfileProgramCriterion>,
+): RoadmapPriority {
+  if (LOW_PRIORITY_TASKS.has(shortId)) return "low";
+  const criterionKey = GAP_TASK_CRITERION[shortId];
+  if (criterionKey && criteria.get(criterionKey)?.status === "Action needed") return "high";
+  return "medium";
+}
+
+function reasonFor(
+  shortId: string,
+  profile: StudentProfile,
+  program: UniversityProgram,
+  criteria: ReadonlyMap<ProfileProgramCriterion["key"], ProfileProgramCriterion>,
+): string {
+  switch (shortId) {
+    case "improve-academics":
+      return "Your GPA is below the directly comparable published minimum for this program.";
+    case "verify-academic-score":
+      return "The program publishes a comparable GPA minimum, but your current value is not recorded.";
+    case "verify-academic":
+      return program.academicRequirement?.isRequired === true
+        ? "This academic requirement uses a different scale, so it needs individual verification."
+        : "The current data does not state the academic entry requirement, so it needs verification.";
+    case "prepare-ielts":
+    case "prepare-sat": {
+      const label = shortId === "prepare-ielts" ? "IELTS" : "SAT";
+      const value = shortId === "prepare-ielts" ? profile.ieltsScore : profile.satScore;
+      return value === null
+        ? `The ${label} requirement is published, but no score is recorded yet.`
+        : `Your ${label} score is below the published minimum.`;
+    }
+    case "take-ielts":
+    case "take-sat": {
+      const label = shortId === "take-ielts" ? "IELTS" : "SAT";
+      const value = shortId === "take-ielts" ? profile.ieltsScore : profile.satScore;
+      return value === null
+        ? `An official ${label} result is needed to satisfy the published requirement.`
+        : `Your current ${label} score is below the published minimum, so an official result at or above it is needed.`;
+    }
+    case "verify-ielts":
+      return "The current data does not state this program's IELTS requirement, so it needs verification.";
+    case "verify-sat":
+      return "The current data does not state this program's SAT requirement, so it needs verification.";
+    case "plan-budget":
+      return "The published tuition is above the annual budget you provided.";
+    case "review-tuition":
+      return "Tuition is published in a different currency or billing period, so it cannot be compared with your budget.";
+    case "verify-tuition":
+      return program.tuition === null || program.tuitionCurrency === null
+        ? "The current data does not include verified tuition for this program."
+        : "Adding a comparable annual budget makes the published tuition comparable.";
+    case "verify-documents":
+      return "Document requirements for this program are not fully verified in the current dataset.";
+    case "prepare-documents":
+      return profile.activitiesAndAchievements?.trim()
+        ? "Activities are available and can be used while preparing application materials."
+        : "Application materials should match the requirements confirmed on the official source.";
+    case "prepare-motivation-letter":
+      return "The program's verified data requires a motivation letter.";
+    case "prepare-recommendations":
+      return "The program's verified data requires recommendation letters.";
+    case "verify-deadline":
+      return "The university has not provided a verified deadline in the current dataset.";
+    case "review-deadline":
+      return criteria.get("timeline")?.status === "Action needed"
+        ? "The published deadline does not align with your target intake year, so the correct application cycle needs confirming."
+        : "The published deadline defines the correct application window.";
+    case "review-application":
+      return "The official application route defines how and where to submit.";
+    case "finalize-application":
+      return "A final check keeps the submission consistent with the program's confirmed requirements.";
+    case "submit-application":
+      return "The application is only complete once submitted through the official route.";
+    default:
+      return "This step keeps your application aligned with the program's verified facts.";
+  }
+}
+
+function enrichTask(
+  item: RoadmapItem,
+  profile: StudentProfile,
+  program: UniversityProgram,
+  criteria: ReadonlyMap<ProfileProgramCriterion["key"], ProfileProgramCriterion>,
+): RoadmapItem {
+  const shortId = item.id.slice(program.id.length + 1);
+  return {
+    ...item,
+    horizon: horizonFor(item.phase, item.type),
+    priority: priorityFor(shortId, criteria),
+    reason: reasonFor(shortId, profile, program, criteria),
+    relatedRequirement: RELATED_REQUIREMENT[shortId] ?? item.type,
+  };
 }
 
 export function generateRoadmap(
@@ -205,7 +354,7 @@ export function generateRoadmap(
   items.push(task(program, "finalize-application", `Final review for ${program.programName}`, "Check that your verified documents and application details match the current official instructions before submission.", "apply", "preparation", applicationSource));
   items.push(task(program, "submit-application", "Submit through the official application route", program.deadline === null ? "Submit only after confirming the deadline, required materials, and official instructions." : `Submit the verified application package by the published deadline of ${program.deadline}.`, "apply", "application", applicationSource, program.deadline));
 
-  return items;
+  return items.map((item) => enrichTask(item, profile, program, criteria));
 }
 
 export function getRoadmapProgress(
@@ -218,12 +367,25 @@ export function getRoadmapProgress(
   return { completed, total, percentage: total === 0 ? 0 : Math.round((completed / total) * 100) };
 }
 
+export function getPrioritizedRoadmapItems(items: readonly RoadmapItem[]) {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => priorityRank[a.item.priority] - priorityRank[b.item.priority] || a.index - b.index)
+    .map(({ item }) => item);
+}
+
 export function getNextAction(
   items: readonly RoadmapItem[],
   completedIds: readonly string[],
 ) {
   const completed = new Set(completedIds);
-  return items.find(({ id }) => !completed.has(id)) ?? null;
+  let next: { item: RoadmapItem; rank: number } | null = null;
+  for (const item of items) {
+    if (completed.has(item.id)) continue;
+    const rank = priorityRank[item.priority];
+    if (next === null || rank < next.rank) next = { item, rank };
+  }
+  return next?.item ?? null;
 }
 
 export function hasStrongProfileState(items: readonly RoadmapItem[]) {
