@@ -33,3 +33,81 @@ body {
   background: #b9d8c7;
   color: #173429;
 }
+
+.landing-shell {
+  --landing-rule: rgba(23, 37, 31, 0.16);
+}
+
+.landing-product-grid {
+  background-image:
+    linear-gradient(rgba(23, 52, 41, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 52, 41, 0.025) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.landing-enter {
+  animation: landing-enter 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-enter-delay {
+  animation-delay: 0.08s;
+}
+
+.landing-enter-delay-2 {
+  animation-delay: 0.16s;
+}
+
+.landing-enter-delay-3 {
+  animation-delay: 0.24s;
+}
+
+.landing-reveal {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes landing-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-scroll-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  .landing-reveal {
+    animation: landing-scroll-reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 8% cover 30%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-shell *,
+  .landing-shell *::before,
+  .landing-shell *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .landing-reveal,
+  .landing-enter {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

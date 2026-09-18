@@ -1,166 +1,281 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Brand } from "@/components/ui/brand";
 import { programs } from "@/data/programs";
 
-const verificationDates = new Set(programs.flatMap(({ verificationDate }) => verificationDate ? [verificationDate] : []));
-
-const coverage = {
-  programs: programs.length,
-  universities: new Set(programs.map((item) => item.universityName)).size,
-  countries: new Set(programs.flatMap(({ country }) => country?.trim() ? [country.trim()] : [])).size,
-  directions: ["Computer Science", "Business"],
+export const metadata: Metadata = {
+  title: "Fortech | Know where you stand",
+  description: "Build your profile, understand your admission position, compare programs, and leave with a program-specific roadmap.",
 };
 
-const verificationMessage = verificationDates.size === 1
-  ? `Program data verified on ${[...verificationDates][0]}.`
-  : verificationDates.size > 1
-    ? "Program verification dates vary by program. See each program’s sources for details."
-    : "Program data verified against official university sources.";
+const verificationDates = [...new Set(programs.flatMap(({ verificationDate }) => verificationDate ? [verificationDate] : []))];
+const coverage = {
+  programs: programs.length,
+  universities: new Set(programs.map(({ universityName }) => universityName)).size,
+  countries: new Set(programs.flatMap(({ country }) => country?.trim() ? [country.trim()] : [])).size,
+};
+const previewProgram = programs.find(({ id }) => id === "lut-software-systems-engineering")!;
 
-const stats = [
-  [String(coverage.programs), "verified programs", "Each one checked against the university's own pages."],
-  [String(coverage.universities), "universities", "A curated sample, not a global catalogue."],
-  [String(coverage.countries), "countries", "Where those programs are taught."],
+const journey = [
+  ["01", "Build your profile", "Set your study direction, add the scores you know, and leave unknown information blank."],
+  ["02", "Understand your position", "See strengths, missing information, and the highest-value details to resolve next."],
+  ["03", "Discover matching programs", "Review current matches ranked by deterministic eligibility, Fit Score, and data coverage."],
+  ["04", "Compare requirements", "Read program facts criterion by criterion without winner labels or hidden assumptions."],
+  ["05", "Build your roadmap", "Turn the selected program’s known gaps and verification needs into NOW, PREPARE, and APPLY."],
 ] as const;
 
-const steps = [
-  ["01", "Tell us about yourself", "Share your goals, academics, budget, and timeline."],
-  ["02", "See programs that match you", "Compare profile fit separately from admission eligibility."],
-  ["03", "Get your admission roadmap", "Turn missing requirements into practical next actions."],
+const comparisonRows = [
+  ["Eligibility", "Needs verification", "status"],
+  ["IELTS", `${previewProgram.ieltsRequirement?.minimumScore ?? "Unknown"} minimum`, "known"],
+  ["Academic", "Qualification-specific", "verify"],
+  ["SAT", previewProgram.satRequirement?.isRequired === false ? "Not required" : "Needs verification", "neutral"],
 ] as const;
+
+const roadmapPreview = [
+  ["NOW", "Verify academic criteria", "Check how your school qualification is evaluated."],
+  ["PREPARE", "Confirm application documents", "Use the official admissions source before assembling materials."],
+  ["APPLY", "Recheck the final deadline", previewProgram.deadline ?? "Confirm the deadline on the official page."],
+] as const;
+
+function Label({ children, light = false }: { children: React.ReactNode; light?: boolean }) {
+  return <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${light ? "text-forest-100" : "text-forest-700"}`}>{children}</p>;
+}
 
 export default function Home() {
+  const verificationMessage = verificationDates.length === 1
+    ? `Current program records share a verification date of ${verificationDates[0]}.`
+    : verificationDates.length > 1
+      ? "Verification dates vary by program. Each detail page shows its own source state."
+      : "Program records link to official university sources where available.";
+
   return (
-    <main className="min-h-dvh overflow-hidden bg-[radial-gradient(circle_at_top_right,#dcece3_0,transparent_34rem)]">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
-        <Brand />
-        <span className="rounded-full border border-forest-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-forest-700">
-          Built for students
-        </span>
+    <main className="landing-shell overflow-clip bg-[#f1eee8] text-ink">
+      <header className="sticky top-0 z-50 border-b border-black/10 bg-[#f1eee8]/90 backdrop-blur-md">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between px-5 sm:px-8 lg:px-10">
+          <Link href="/" aria-label="Fortech home" className="group inline-flex items-center gap-3 font-semibold tracking-[-0.03em] text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600">
+            <span className="flex size-9 items-center justify-center rounded-full bg-forest-900 text-sm font-bold text-white transition-transform group-hover:-rotate-6">F</span>
+            <span className="text-lg">Fortech</span>
+          </Link>
+          <nav aria-label="Landing navigation" className="flex items-center gap-2 sm:gap-6">
+            <a href="#journey" className="hidden text-sm font-semibold text-forest-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600 sm:inline">How it works</a>
+            <a href="#why-fortech" className="hidden text-sm font-semibold text-forest-900 underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600 md:inline">Why Fortech</a>
+            <Link href="/onboarding" className="inline-flex min-h-11 items-center rounded-full bg-forest-900 px-4 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600 sm:px-5">Start profile</Link>
+          </nav>
+        </div>
       </header>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-12 px-5 pb-16 pt-10 sm:px-8 sm:pt-16 lg:grid-cols-[1.08fr_.92fr] lg:items-center lg:gap-20 lg:pb-24">
-        <div>
-          <p className="mb-5 inline-flex rounded-full bg-forest-100 px-3 py-1.5 text-sm font-semibold text-forest-700">
-            A clearer path to university
-          </p>
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-forest-900 sm:text-6xl sm:leading-[1.05]">
-            Turn admission uncertainty into a plan you can follow.
-          </h1>
-          <p className="mt-6 max-w-xl text-lg leading-8 text-muted sm:text-xl">
-            Build your student profile, understand what is ready and what needs work,
-            then move toward programs that fit your goals.
-          </p>
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Link
-              href="/onboarding"
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-forest-700 px-6 py-3 font-semibold text-white shadow-[0_12px_30px_rgba(32,79,61,.2)] transition-colors hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
-            >
-              Build my admission plan
-            </Link>
-            <span className="text-center text-sm text-muted sm:text-left">
-              Takes about 3 minutes · Saves on this device
-            </span>
+      <section className="relative min-h-[calc(100svh-72px)] border-b border-black/10 px-5 pb-8 pt-8 sm:px-8 sm:pb-12 sm:pt-10 lg:px-10">
+        <div className="mx-auto flex min-h-[calc(100svh-120px)] w-full max-w-[1600px] flex-col">
+          <div className="landing-enter flex items-center justify-between gap-5">
+            <Label>01 / Admission clarity</Label>
+            <p className="hidden text-sm text-ink/55 sm:block">Built for students choosing their next move.</p>
           </div>
-        </div>
 
-        <div className="relative mx-auto w-full max-w-lg">
-          <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-sand-100/70 blur-2xl" />
-          <div className="rounded-[2rem] border border-white/80 bg-white/90 p-5 shadow-[0_24px_80px_rgba(23,52,41,.12)] sm:p-7">
-            <div className="flex items-start justify-between gap-4 border-b border-forest-100 pb-5">
-              <div>
-                <p className="text-sm font-medium text-muted">Your journey</p>
-                <h2 className="mt-1 text-xl font-semibold text-forest-900">A plan built around you</h2>
+          <h1 className="landing-enter landing-enter-delay mt-8 max-w-[1450px] text-[clamp(3.4rem,10.4vw,9.4rem)] font-semibold leading-[0.84] tracking-[-0.075em] text-forest-900">
+            Know where<br />you stand. <span className="relative inline-block"><span className="relative z-10">Know what</span><span aria-hidden="true" className="absolute inset-x-0 bottom-[.03em] h-[.17em] -rotate-1 bg-sand-300" /></span><br />to do next.
+          </h1>
+
+          <div className="mt-auto grid gap-8 pt-10 lg:grid-cols-[minmax(18rem,.7fr)_minmax(0,1.3fr)] lg:items-end lg:gap-16">
+            <div className="landing-enter landing-enter-delay-2 max-w-xl">
+              <p className="text-lg leading-7 text-ink/70 sm:text-xl sm:leading-8">Build your profile, understand the facts behind every match, and leave with a plan for one real program.</p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link href="/onboarding" className="inline-flex min-h-14 items-center justify-center rounded-full bg-forest-900 px-7 font-semibold text-white transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600">Build my profile <span aria-hidden="true" className="ml-3">↗</span></Link>
+                <a href="#journey" className="inline-flex min-h-12 items-center justify-center px-5 text-sm font-semibold text-forest-900 underline decoration-forest-300 underline-offset-4 hover:decoration-forest-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600">See how it works</a>
               </div>
-              <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-semibold text-forest-700">
-                Profile first
-              </span>
             </div>
-            <div className="space-y-3 py-5">
-              {[
-                ["Profile diagnosis", "See strengths and missing information"],
-                ["Relevant matches", "Focus on your chosen study field"],
-                ["Next actions", "Know what to work on first"],
-              ].map(([title, detail], index) => (
-                <div key={title} className="flex gap-4 rounded-2xl bg-forest-50 p-4">
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-forest-700 shadow-sm">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-ink">{title}</p>
-                    <p className="mt-1 text-sm leading-5 text-muted">{detail}</p>
+
+            <div className="landing-enter landing-enter-delay-3 relative lg:translate-y-6" aria-label="Fortech product preview using current program facts">
+              <div className="landing-product-grid overflow-hidden rounded-[1.25rem] border border-forest-900/15 bg-[#fbfaf7] shadow-[0_24px_70px_rgba(23,52,41,.13)] transition-transform duration-500 hover:-translate-y-1">
+                <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 sm:px-5">
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-forest-700"><span className="size-2 rounded-full bg-[#e3a234]" /> Illustrative profile</div>
+                  <span className="text-xs text-muted">Current program facts → Roadmap</span>
+                </div>
+                <div className="grid lg:grid-cols-[minmax(0,1.45fr)_minmax(14rem,.7fr)]">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs font-semibold text-forest-600">{previewProgram.universityName}</p>
+                    <h2 className="mt-1 max-w-xl text-xl font-semibold tracking-[-0.035em] text-forest-900 sm:text-3xl">{previewProgram.programName}</h2>
+                    <div className="mt-5 border-y border-black/10">
+                      {comparisonRows.map(([label, value, tone]) => (
+                        <div key={label} className="grid grid-cols-[6.5rem_minmax(0,1fr)] items-center gap-3 border-b border-black/10 py-2.5 last:border-b-0 sm:grid-cols-[8rem_minmax(0,1fr)_auto]">
+                          <span className="text-xs text-muted">{label}</span>
+                          <strong className="text-sm font-semibold text-ink">{value}</strong>
+                          <span className={`hidden rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide sm:inline ${tone === "known" ? "bg-forest-100 text-forest-700" : tone === "verify" || tone === "status" ? "bg-sand-100 text-amber-900" : "bg-slate-100 text-slate-600"}`}>{tone === "known" ? "Known" : tone === "neutral" ? "Clear" : "Check"}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[11px] leading-5 text-muted">Fit Score measures profile alignment—not admission probability.</p>
+                  </div>
+                  <div className="border-t border-black/10 bg-forest-900 p-4 text-white sm:p-5 lg:border-l lg:border-t-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-forest-100">Next action</p>
+                    <p className="mt-3 text-lg font-semibold leading-5">Verify academic criteria</p>
+                    <div className="mt-5 space-y-3">
+                      {["NOW", "PREPARE", "APPLY"].map((phase, index) => (
+                        <div key={phase} className="flex items-center gap-3 border-t border-white/15 pt-3">
+                          <span className={`size-2 rounded-full ${index === 0 ? "bg-[#e3a234]" : "bg-white/25"}`} />
+                          <span className="text-[10px] font-bold tracking-[0.16em] text-forest-100">{phase}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-            <p className="rounded-2xl border border-sand-300/70 bg-sand-100/60 px-4 py-3 text-sm leading-6 text-forest-900">
-              Fit Score describes profile match. It is never an admission probability.
-            </p>
           </div>
         </div>
       </section>
 
-      <section className="border-t border-forest-100 bg-white/60">
-        <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-forest-600">How it works</p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">
-            Three steps from questions to direction.
-          </h2>
-          <div className="mt-9 grid gap-4 md:grid-cols-3">
-            {steps.map(([number, title, detail]) => (
-              <article key={number} className="rounded-3xl border border-forest-100 bg-white p-6">
-                <span className="text-sm font-bold text-forest-500">{number}</span>
-                <h3 className="mt-8 text-xl font-semibold text-forest-900">{title}</h3>
-                <p className="mt-3 leading-7 text-muted">{detail}</p>
-              </article>
-            ))}
+      <section id="journey" className="scroll-mt-20 border-b border-black/10 px-5 py-24 sm:px-8 sm:py-32 lg:px-10 lg:py-40">
+        <div className="mx-auto grid w-full max-w-[1600px] gap-16 lg:grid-cols-[minmax(18rem,.72fr)_minmax(0,1.28fr)] lg:gap-24">
+          <div className="landing-reveal lg:sticky lg:top-28 lg:self-start">
+            <Label>02 / One connected journey</Label>
+            <h2 className="mt-6 max-w-xl text-[clamp(3rem,6.4vw,6.5rem)] font-semibold leading-[0.9] tracking-[-0.065em] text-forest-900">From uncertainty to a next move.</h2>
+            <p className="mt-7 max-w-md text-lg leading-8 text-ink/65">Every stage feeds the next. Your current profile and chosen program remain the source of truth.</p>
           </div>
-        </div>
-      </section>
 
-      {/* Scope stated up front: the case requires the coverage limit to be visible in the product, not only in the README. */}
-      <section className="border-t border-forest-100">
-        <div className="mx-auto w-full max-w-6xl px-5 py-16 sm:px-8 sm:py-20">
-          <p className="text-sm font-bold uppercase tracking-[0.18em] text-forest-600">What is inside</p>
-          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">
-            A small, checked dataset beats a large, unchecked one.
-          </h2>
-          <p className="mt-4 max-w-2xl leading-7 text-muted">
-            Every requirement, fee and deadline in this product comes from an official university page,
-            and every program card links back to it. Where a university does not publish a clear value,
-            we show <span className="font-semibold text-forest-900">Unknown</span> instead of guessing.
-          </p>
-
-          <ul className="mt-9 grid gap-4 sm:grid-cols-3">
-            {stats.map(([value, label, detail]) => (
-              <li key={label} className="rounded-3xl border border-forest-100 bg-white p-6">
-                <strong className="block text-4xl font-semibold tracking-tight text-forest-900 tabular-nums">{value}</strong>
-                <span className="mt-1 block font-semibold text-forest-700">{label}</span>
-                <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
+          <ol className="border-t border-black/20">
+            {journey.map(([number, title, detail]) => (
+              <li key={number} className="landing-reveal group grid gap-5 border-b border-black/20 py-9 sm:grid-cols-[4rem_minmax(0,.75fr)_minmax(0,1fr)] sm:py-12">
+                <span className="font-mono text-sm text-forest-600">{number}</span>
+                <h3 className="text-2xl font-semibold leading-7 tracking-[-0.035em] text-forest-900 transition-transform duration-300 group-hover:translate-x-2 sm:text-3xl sm:leading-8">{title}</h3>
+                <p className="max-w-lg leading-7 text-ink/65">{detail}</p>
               </li>
             ))}
-          </ul>
+          </ol>
+        </div>
+      </section>
 
-          <div className="mt-4 rounded-3xl border border-sand-300/70 bg-sand-100/60 px-6 py-5">
-            <p className="font-semibold text-forest-900">Current limits, stated plainly</p>
-            <ul className="mt-3 grid gap-2 text-sm leading-6 text-forest-900 sm:grid-cols-2">
-              <li>Bachelor programs only.</li>
-              <li>Two study directions: {coverage.directions.join(" and ")}.</li>
-              <li>Fit Score is a profile match, never a probability of admission.</li>
-              <li>Requirements change — always confirm on the university page before applying.</li>
-            </ul>
+      <section id="why-fortech" className="scroll-mt-20 bg-forest-900 px-5 py-24 text-white sm:px-8 sm:py-32 lg:px-10 lg:py-40">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <Label light>03 / The trust model</Label>
+          <h2 className="landing-reveal mt-8 max-w-[1400px] text-[clamp(3.7rem,9.5vw,9rem)] font-semibold leading-[0.86] tracking-[-0.075em]">Facts first.<br /><span className="text-sand-300">AI explains them.</span></h2>
+          <div className="mt-20 grid border-t border-white/20 lg:grid-cols-2">
+            <article className="landing-reveal border-b border-white/20 py-8 lg:border-b-0 lg:border-r lg:pr-16">
+              <p className="font-mono text-xs text-forest-100">01 / DETERMINISTIC</p>
+              <h3 className="mt-7 text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">Admission facts stay fixed.</h3>
+              <p className="mt-5 max-w-xl text-lg leading-8 text-forest-100">Eligibility, Fit Score, data coverage, requirement states, and roadmap steps come from deterministic logic and structured program data.</p>
+            </article>
+            <article className="landing-reveal py-8 lg:pl-16">
+              <p className="font-mono text-xs text-forest-100">02 / AI-ASSISTED</p>
+              <h3 className="mt-7 text-3xl font-semibold tracking-[-0.04em] sm:text-5xl">Explanations become easier to use.</h3>
+              <p className="mt-5 max-w-xl text-lg leading-8 text-forest-100">AI may rewrite the explanation in clearer language. It cannot add requirements, change scores, or make an admission decision.</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-forest-100 bg-white/60">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <Brand />
-          <p className="text-sm leading-6 text-muted">
-            {verificationMessage}{" "}
-            Built for the LOCUS Startup Hackathon 2026.
-          </p>
+      <section className="border-b border-black/10 px-5 py-24 sm:px-8 sm:py-32 lg:px-10 lg:py-40">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] lg:items-end">
+            <div className="landing-reveal">
+              <Label>04 / Explainable matching</Label>
+              <h2 className="mt-6 max-w-3xl text-[clamp(3.2rem,7vw,7rem)] font-semibold leading-[0.9] tracking-[-0.065em] text-forest-900">See the reason behind every result.</h2>
+            </div>
+            <p className="landing-reveal max-w-xl text-lg leading-8 text-ink/65 lg:justify-self-end">Fortech separates eligibility from profile alignment and tells you when the underlying data is known, unknown, or not comparable.</p>
+          </div>
+
+          <div className="landing-reveal mt-16 overflow-hidden border-y border-black/20 bg-[#f8f6f1]">
+            <div className="grid border-b border-black/15 px-4 py-4 text-[10px] font-bold uppercase tracking-[0.17em] text-muted sm:grid-cols-[minmax(9rem,.7fr)_repeat(3,minmax(0,1fr))] sm:px-7">
+              <span>Decision signal</span><span className="hidden sm:block">Example profile</span><span className="hidden sm:block">Program</span><span className="hidden sm:block">State</span>
+            </div>
+            {[
+              ["IELTS", "6.0", "6.5 minimum", "Action needed"],
+              ["Academic", "GPA 3.5", "Qualification-specific", "Needs verification"],
+              ["SAT", "Not provided", "Not required", "Not required"],
+              ["Tuition", "USD budget", "EUR / year", "Not comparable"],
+            ].map(([signal, profile, program, state]) => (
+              <div key={signal} className="grid gap-3 border-b border-black/10 px-4 py-5 last:border-b-0 sm:grid-cols-[minmax(9rem,.7fr)_repeat(3,minmax(0,1fr))] sm:items-center sm:px-7">
+                <strong className="text-lg text-forest-900">{signal}</strong>
+                <p className="text-sm"><span className="mr-2 text-[10px] font-bold uppercase tracking-wide text-muted sm:hidden">You</span>{profile}</p>
+                <p className="text-sm"><span className="mr-2 text-[10px] font-bold uppercase tracking-wide text-muted sm:hidden">Program</span>{program}</p>
+                <p><span className="inline-flex rounded-full bg-sand-100 px-3 py-1.5 text-xs font-bold text-amber-900">{state}</span></p>
+              </div>
+            ))}
+          </div>
+
+          <p className="landing-reveal mt-8 border-l-4 border-sand-300 pl-5 text-xl font-semibold leading-8 text-forest-900 sm:text-3xl sm:leading-10">Fit Score measures profile alignment, not admission probability.</p>
         </div>
+      </section>
+
+      <section className="bg-sand-100 px-5 py-24 sm:px-8 sm:py-32 lg:px-10 lg:py-40">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <Label>05 / From match to movement</Label>
+          <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,.6fr)] lg:items-end">
+            <h2 className="landing-reveal text-[clamp(3.5rem,8vw,8rem)] font-semibold leading-[0.87] tracking-[-0.07em] text-forest-900">A match matters when it tells you what to do next.</h2>
+            <p className="landing-reveal text-lg leading-8 text-ink/65">Roadmaps are regenerated from your current profile and the selected program—never from generic task templates.</p>
+          </div>
+
+          <ol className="mt-16 grid border-t border-forest-900/25 lg:grid-cols-3">
+            {roadmapPreview.map(([phase, title, detail], index) => (
+              <li key={phase} className={`landing-reveal min-h-72 border-b border-forest-900/25 py-8 lg:border-b-0 lg:px-8 ${index > 0 ? "lg:border-l" : "lg:pl-0"}`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold tracking-[0.18em] text-forest-700">{phase}</span>
+                  <span className="text-sm text-forest-700">0{index + 1}</span>
+                </div>
+                <h3 className="mt-16 max-w-sm text-3xl font-semibold leading-8 tracking-[-0.04em] text-forest-900">{title}</h3>
+                <p className="mt-4 max-w-sm leading-7 text-ink/65">{detail}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="border-b border-black/10 px-5 py-24 sm:px-8 sm:py-32 lg:px-10 lg:py-40">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,.65fr)_minmax(0,1.35fr)]">
+            <div className="landing-reveal">
+              <Label>06 / Curated coverage</Label>
+              <h2 className="mt-6 text-4xl font-semibold leading-[0.95] tracking-[-0.055em] text-forest-900 sm:text-6xl">Small enough to check.<br />Useful enough to act.</h2>
+            </div>
+            <dl className="border-t border-black/20">
+              {[
+                [coverage.programs, "programs", "Current structured records with official source links."],
+                [coverage.universities, "universities", "A deliberate sample rather than a global catalogue."],
+                [coverage.countries, "countries", "Coverage across the supported study directions."],
+              ].map(([value, label, detail]) => (
+                <div key={label} className="landing-reveal grid grid-cols-[6rem_minmax(0,1fr)] gap-5 border-b border-black/20 py-8 sm:grid-cols-[9rem_minmax(10rem,.6fr)_minmax(0,1fr)] sm:items-baseline">
+                  <dt className="text-5xl font-semibold tracking-[-0.06em] text-forest-900 tabular-nums sm:text-7xl">{value}</dt>
+                  <dd className="text-xl font-semibold text-forest-900 sm:text-2xl">{label}</dd>
+                  <dd className="col-start-2 max-w-md text-sm leading-6 text-ink/60 sm:col-start-auto">{detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
+          <div className="landing-reveal mt-20 grid gap-8 border-t border-black/20 pt-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="font-semibold text-forest-900">Bachelor-first</p><p className="mt-2 text-sm leading-6 text-muted">The current recommendation pool supports Bachelor programs.</p></div>
+            <div><p className="font-semibold text-forest-900">Two directions</p><p className="mt-2 text-sm leading-6 text-muted">Computer Science and Business are supported today.</p></div>
+            <div><p className="font-semibold text-forest-900">Official sources</p><p className="mt-2 text-sm leading-6 text-muted">Program pages retain their source titles, links, and verification state.</p></div>
+            <div><p className="font-semibold text-forest-900">Unknown stays unknown</p><p className="mt-2 text-sm leading-6 text-muted">Missing facts never become automatic passes, failures, or estimates.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#dcece3] px-5 py-24 sm:px-8 sm:py-32 lg:px-10 lg:py-40">
+        <div className="mx-auto w-full max-w-[1600px]">
+          <Label>07 / Your next step</Label>
+          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_auto] lg:items-end">
+            <h2 className="landing-reveal max-w-6xl text-[clamp(3.8rem,9vw,9rem)] font-semibold leading-[0.86] tracking-[-0.075em] text-forest-900">Build your profile.<br />Leave with a plan.</h2>
+            <Link href="/onboarding" className="landing-reveal inline-flex min-h-16 items-center justify-center rounded-full bg-forest-900 px-8 text-lg font-semibold text-white transition-transform hover:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600">Start now <span aria-hidden="true" className="ml-4">↗</span></Link>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-forest-900 px-5 py-12 text-white sm:px-8 lg:px-10 lg:py-16">
+        <div className="mx-auto grid w-full max-w-[1600px] gap-12 lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(10rem,.35fr))]">
+          <div>
+            <Link href="/" aria-label="Fortech home" className="inline-flex items-center gap-3 text-2xl font-semibold tracking-[-0.04em] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"><span className="flex size-10 items-center justify-center rounded-full bg-white text-sm font-bold text-forest-900">F</span>Fortech</Link>
+            <p className="mt-6 max-w-lg text-sm leading-6 text-forest-100">Know where you stand. Understand why. Know what to do next.</p>
+          </div>
+          <nav aria-label="Footer navigation">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-100">Explore</p>
+            <div className="mt-4 flex flex-col gap-3 text-sm"><a href="#journey" className="hover:underline">How it works</a><a href="#why-fortech" className="hover:underline">Why Fortech</a><Link href="/onboarding" className="hover:underline">Start profile</Link></div>
+          </nav>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-100">Data context</p>
+            <p className="mt-4 text-sm leading-6 text-forest-100">{verificationMessage}</p>
+            <p className="mt-3 text-xs leading-5 text-forest-100/75">Built for the LOCUS Startup Hackathon 2026.</p>
+          </div>
+        </div>
+        <p className="mx-auto mt-14 w-full max-w-[1600px] border-t border-white/15 pt-6 text-xs text-forest-100/70">Fortech supports decisions; universities make admission decisions.</p>
       </footer>
     </main>
   );
