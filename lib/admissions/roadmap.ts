@@ -103,6 +103,7 @@ export function generateRoadmap(
 ): RoadmapItem[] {
   const items: RoadmapItem[] = [];
   const academic = program.academicRequirement;
+  const activities = profile.activitiesAndAchievements?.trim();
   const criteria = new Map(buildProfileProgramCriteria(profile, assessProgram(profile, program)).map((criterion) => [criterion.key, criterion]));
   const admissionsSource = sourceFor(program, "admissions", "program");
 
@@ -163,7 +164,17 @@ export function generateRoadmap(
     "verification",
     admissionsSource,
   ));
-  items.push(task(program, "prepare-documents", `Prepare your ${program.programName} application materials`, "Assemble only the materials confirmed by the program's current official instructions.", "prepare", "preparation", admissionsSource));
+  items.push(task(
+    program,
+    "prepare-documents",
+    `Prepare your ${program.programName} application materials`,
+    activities
+      ? "Use the activities and achievements you provided as relevant examples only where the program's confirmed application materials ask for them."
+      : "Assemble only the materials confirmed by the program's current official instructions.",
+    "prepare",
+    "preparation",
+    admissionsSource,
+  ));
 
   if (program.applicationDocuments?.motivationLetter === true) {
     items.push(task(program, "prepare-motivation-letter", "Prepare the required motivation letter", `Draft and revise the motivation letter required for ${program.programName}.`, "prepare", "preparation", admissionsSource));

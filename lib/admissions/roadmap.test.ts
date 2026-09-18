@@ -179,6 +179,19 @@ test("verified motivation and recommendation requirements create only their prep
   assert.equal(noItems.some(({ id }) => /prepare-(motivation-letter|recommendations)$/.test(id)), false);
 });
 
+test("activities only enrich contextual application-material guidance", () => {
+  const program = byId("northbridge-cs");
+  const unchanged = generateRoadmap(profile, program);
+  const blank = generateRoadmap({ ...profile, activitiesAndAchievements: "  " }, program);
+  const contextual = generateRoadmap({ ...profile, activitiesAndAchievements: "Volunteer tutor and coding project" }, program);
+  const materialStep = contextual.find(({ id }) => id.endsWith(":prepare-documents"));
+
+  assert.deepEqual(blank, unchanged);
+  assert.deepEqual(ids(contextual), ids(unchanged));
+  assert.match(materialStep!.description, /activities and achievements.*relevant examples.*confirmed application materials/i);
+  assert.doesNotMatch(materialStep!.description, /chance|probability|guarantee/i);
+});
+
 test("relevant official sources pass through unchanged", () => {
   const program = productionById("lut-software-systems-engineering");
   const items = generateRoadmap(profile, program);

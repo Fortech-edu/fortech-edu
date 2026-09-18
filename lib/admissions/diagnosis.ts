@@ -8,6 +8,9 @@ export function diagnoseProfile(profile: StudentProfile): Diagnosis {
   if (profile.intendedField) strengths.push("Study field is clearly defined");
   else missingInformation.push("Intended field");
 
+  const activities = profile.activitiesAndAchievements?.trim();
+  if (activities) strengths.push("Activities and achievements are available for application planning");
+
   if (profile.ieltsScore !== null) strengths.push("IELTS score is available");
   else {
     missingInformation.push("IELTS score");

@@ -244,6 +244,14 @@ test("language preference is transparent evidence, not an eligibility or score p
   assert.ok(assessProgram(preferred, unknown).gaps.includes("Language of instruction needs verification"));
 });
 
+test("activities do not change deterministic matching or eligibility", () => {
+  const program = byId("northbridge-cs");
+  const withActivities = { ...profile, activitiesAndAchievements: "Math olympiad and a software project" };
+
+  assert.deepEqual(calculateFit(withActivities, program), calculateFit(profile, program));
+  assert.equal(evaluateEligibility(withActivities, program), evaluateEligibility(profile, program));
+});
+
 test("the same inputs always return the same recommendations", () => {
   assert.deepEqual(
     recommendPrograms(profile, demoPrograms),

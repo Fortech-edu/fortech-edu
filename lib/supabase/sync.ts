@@ -32,6 +32,7 @@ export function serializeProfile(profile: StoredProfile): PersistedStudentProfil
     intendedField,
     preferredCountries,
     preferredLanguage,
+    activitiesAndAchievements,
     targetIntake,
     gpa,
     ieltsScore,
@@ -45,6 +46,7 @@ export function serializeProfile(profile: StoredProfile): PersistedStudentProfil
     intendedField,
     preferredCountries,
     preferredLanguage: preferredLanguage ?? null,
+    activitiesAndAchievements: activitiesAndAchievements?.trim() || null,
     targetIntake,
     gpa,
     ieltsScore,
@@ -86,6 +88,7 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     "intendedField",
     "preferredCountries",
     "preferredLanguage",
+    "activitiesAndAchievements",
     "targetIntake",
     "gpa",
     "ieltsScore",
@@ -93,10 +96,11 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     "annualBudget",
     "budgetCurrency",
   ];
-  const legacyProfileKeys = profileKeys.filter((key) => key !== "preferredLanguage");
+  const requiredProfileKeys = profileKeys.filter((key) => key !== "preferredLanguage" && key !== "activitiesAndAchievements");
+  const allowedProfileKeys = new Set(profileKeys);
   if (
-    !profileKeys.every((key) => key in remote) &&
-    !(Object.keys(remote).length === legacyProfileKeys.length && legacyProfileKeys.every((key) => key in remote))
+    !requiredProfileKeys.every((key) => key in remote) ||
+    Object.keys(remote).some((key) => !allowedProfileKeys.has(key))
   ) return null;
   const candidate: StudentProfile = {
     fullName: localProfile?.fullName ?? null,
@@ -107,6 +111,7 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     intendedField: remote.intendedField as string | null,
     preferredCountries: remote.preferredCountries as string[],
     preferredLanguage: (remote.preferredLanguage as string | null | undefined) ?? null,
+    activitiesAndAchievements: (remote.activitiesAndAchievements as string | null | undefined) ?? null,
     targetIntake: remote.targetIntake as string | null,
     gpa: remote.gpa as number | null,
     ieltsScore: remote.ieltsScore as number | null,
@@ -115,6 +120,7 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     budgetCurrency: remote.budgetCurrency as string | null,
   };
   if (!isStudentProfile(candidate)) return null;
+  candidate.activitiesAndAchievements = candidate.activitiesAndAchievements?.trim() || null;
 
   return {
     version: 1,
