@@ -36,7 +36,7 @@ const currencies = [...new Set(programs.flatMap(({ tuitionCurrency }) => tuition
 const secondaryStages = ["Undergraduate student", "Graduate"];
 
 const inputClass =
-  "mt-2 min-h-12 w-full rounded-xl border border-forest-200 bg-white px-3.5 text-base text-ink outline-none transition placeholder:text-slate-400 hover:border-forest-500 focus:border-forest-600 focus:ring-3 focus:ring-forest-100";
+  "product-input mt-2 min-h-12 w-full border border-forest-200 bg-white px-3.5 text-base text-ink outline-none transition placeholder:text-slate-400";
 const labelClass = "block text-sm font-semibold text-forest-900";
 
 function display(value: string | number | null, fallback = "Not provided") {
@@ -74,7 +74,7 @@ function ChoiceCard({
   badge?: string;
 }) {
   return (
-    <label className="group flex min-h-24 cursor-pointer gap-3 rounded-2xl border border-forest-200 bg-white p-4 transition hover:border-forest-500 has-checked:border-forest-700 has-checked:bg-forest-50 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-forest-600">
+    <label className="choice-card group flex min-h-24 cursor-pointer gap-3 border border-forest-200 bg-white p-4 transition has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-forest-600">
       <input
         className="sr-only"
         type="radio"
@@ -100,7 +100,7 @@ function ChoiceCard({
 
 function FieldCard({ children, tone = "plain" }: { children: ReactNode; tone?: "plain" | "emphasis" }) {
   return (
-    <div className={`rounded-2xl border p-5 sm:p-6 ${tone === "emphasis" ? "border-forest-200 bg-forest-50/70" : "border-forest-100 bg-white"}`}>
+    <div className={`field-group p-5 sm:p-6 ${tone === "emphasis" ? "bg-forest-50/70" : ""}`}>
       {children}
     </div>
   );
@@ -117,7 +117,7 @@ function StepProgress({ step }: { step: number }) {
           const isCurrent = number === step;
           const isComplete = number < step;
           return (
-            <li key={title} className={`flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-sm ${isCurrent ? "bg-forest-900 text-white" : "text-muted"}`}>
+            <li key={title} aria-current={isCurrent ? "step" : undefined} className={`step-item flex min-h-14 items-center gap-3 px-2 py-3 text-sm ${isCurrent ? "font-semibold" : "text-muted"}`}>
               <span className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold ${isCurrent ? "border-white/50" : isComplete ? "border-forest-600 bg-forest-600 text-white" : "border-forest-200"}`}>
                 {isComplete ? "✓" : String(number).padStart(2, "0")}
               </span>
@@ -169,7 +169,7 @@ function ProfilePreview({ profile }: { profile: StudentProfile }) {
 
 function ReviewSection({ title, step, onEdit, children }: { title: string; step: number; onEdit: (step: number) => void; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-forest-100 bg-white p-5 sm:p-6">
+    <section className="review-section p-5 sm:p-6">
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-600">{title}</h3>
         <button type="button" onClick={() => onEdit(step)} className="min-h-11 rounded-full px-3 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:decoration-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
@@ -270,12 +270,12 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
   const availableCurrencies = [...new Set([...currencies, ...(profile.budgetCurrency ? [profile.budgetCurrency] : [])])];
 
   return (
-    <form onSubmit={submit} noValidate className="grid items-start gap-6 lg:grid-cols-[minmax(17rem,0.86fr)_minmax(0,1.65fr)] lg:gap-8">
+    <form onSubmit={submit} noValidate className="onboarding-layout grid items-start gap-8 lg:grid-cols-[minmax(17rem,0.72fr)_minmax(0,1.6fr)] lg:gap-12">
       <aside className="sticky top-6 hidden space-y-6 lg:block">
-        <div className="rounded-3xl border border-forest-100 bg-white p-4 shadow-[0_16px_45px_rgba(23,52,41,.06)]">
+        <div className="editorial-section p-4">
           <StepProgress step={step} />
         </div>
-        <div className="rounded-3xl border border-forest-200 bg-sand-100/70 p-6 shadow-[0_16px_45px_rgba(23,52,41,.05)]">
+        <div className="accent-section p-6">
           <ProfilePreview profile={profile} />
           <p className="mt-5 border-t border-sand-300 pt-4 text-xs leading-5 text-muted">
             We use verified program facts for matching. Missing information stays unknown.
@@ -284,7 +284,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
       </aside>
 
       <div className="min-w-0">
-        <div className="mb-4 rounded-2xl border border-forest-100 bg-white p-4 shadow-sm lg:hidden">
+        <div className="editorial-section mb-5 p-4 lg:hidden">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-forest-700">Step {step} of 4</p>
@@ -303,14 +303,14 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
           </details>
         </div>
 
-        <section className="overflow-hidden rounded-[1.75rem] border border-forest-100 bg-white shadow-[0_20px_65px_rgba(23,52,41,.09)] sm:rounded-[2rem]">
+        <section className="onboarding-panel overflow-hidden">
           <header className="border-b border-forest-100 px-5 py-6 sm:px-8 sm:py-8">
             <p className="hidden text-xs font-semibold uppercase tracking-[0.16em] text-forest-600 lg:block">Step {String(step).padStart(2, "0")} of 04</p>
-            <h1 id="onboarding-step-heading" className="text-2xl font-semibold tracking-tight text-forest-900 sm:text-3xl">{title}</h1>
+            <h1 id="onboarding-step-heading" className="mt-3 text-3xl font-semibold leading-[0.95] text-forest-900 sm:text-5xl">{title}</h1>
             <p className="mt-2 max-w-2xl leading-7 text-muted">{description}</p>
           </header>
 
-          <div className="space-y-5 bg-[#fbfcfa] px-5 py-6 sm:px-8 sm:py-8">
+          <div key={step} className="onboarding-step-content space-y-0 bg-[var(--surface)] px-5 py-2 sm:px-8 sm:py-4">
             {step === 1 ? (
               <>
                 <FieldCard>

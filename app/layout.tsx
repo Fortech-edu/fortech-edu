@@ -9,7 +9,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Admission Journey",
+  title: "Fortech",
   description: "Build a clear, practical university admission plan.",
 };
 

@@ -118,12 +118,12 @@ export function ProfileProgramComparison({ profile, recommendation }: { profile:
         <p className="mt-2 text-sm leading-6 text-muted">Known facts are compared directly. Missing or non-comparable information stays explicit.</p>
       </div>
 
-      <div className="mt-6 hidden grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] gap-5 border-b border-forest-200 px-4 pb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted md:grid" aria-hidden="true">
+      <div className="mt-8 hidden grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] gap-5 border-b border-forest-200 px-4 pb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted md:grid" aria-hidden="true">
         <span>Criterion</span><span>Your profile</span><span>Program</span><span>Status</span>
       </div>
       <div className="divide-y divide-forest-100 border-y border-forest-100 md:border-t-0">
         {criteria.map((criterion) => (
-          <article key={criterion.key} className="grid gap-3 py-5 md:grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] md:gap-5 md:px-4">
+          <article key={criterion.key} className="grid gap-3 py-6 md:grid-cols-[minmax(9rem,.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,.8fr)] md:gap-5 md:px-4">
             <h3 className="font-semibold text-forest-900">{criterion.label}</h3>
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted md:sr-only">Your profile</p>
@@ -196,8 +196,8 @@ export function ProgramSources({ recommendation }: { recommendation: Recommendat
       {program.sources.length ? (
         <ul className="mt-4 grid gap-2 sm:grid-cols-2">
           {program.sources.map((source) => (
-            <li key={`${source.type}:${source.url}`}>
-              <a href={source.url} target="_blank" rel="noopener noreferrer" aria-label={`${source.title} (opens in a new tab)`} className="block rounded-xl bg-forest-50 px-3 py-2.5 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
+            <li key={`${source.type}:${source.url}`} className="border-t border-black/10 first:border-t-0">
+              <a href={source.url} target="_blank" rel="noopener noreferrer" aria-label={`${source.title} (opens in a new tab)`} className="block px-1 py-3 text-sm font-semibold text-forest-700 underline decoration-forest-200 underline-offset-4 hover:text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
                 <span className="mr-2 text-xs uppercase tracking-wide text-muted">{sourceTypeLabels[source.type]}</span>{source.title}
               </a>
             </li>
@@ -219,9 +219,9 @@ export function RecommendationCard({ recommendation, rank, recentChange, selecte
   const reasons = recommendation.reasons.slice(0, 2);
   const watchOut = recommendation.gaps[0];
   return (
-    <article className="rounded-[1.75rem] border border-forest-100 bg-white p-5 shadow-[0_16px_50px_rgba(23,52,41,.06)] sm:p-7">
+    <article className="recommendation-row py-7 sm:py-10">
       <div className="grid gap-5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start">
-        <p className="text-2xl font-semibold tracking-tight text-forest-600" aria-label={`Rank ${rank}`}>#{rank}</p>
+        <p className="font-mono text-4xl font-semibold tracking-[-0.06em] text-forest-600 sm:text-5xl" aria-label={`Rank ${rank}`}>{String(rank).padStart(2, "0")}</p>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <EligibilityBadge status={recommendation.eligibility} />
@@ -232,7 +232,7 @@ export function RecommendationCard({ recommendation, rank, recentChange, selecte
           <p className="mt-2 text-sm text-muted">{program.country ?? "Unknown country"} · {program.degreeLevel ?? "Degree unknown"}</p>
           <div className="mt-3"><SourceState recommendation={recommendation} /></div>
         </div>
-        <div className="rounded-2xl bg-forest-900 px-5 py-4 text-white sm:min-w-36 sm:text-right">
+        <div className="border-l-4 border-[var(--accent)] bg-forest-900 px-5 py-4 text-white sm:min-w-36 sm:text-right">
           <p className="text-xs font-semibold uppercase tracking-[0.12em] text-forest-100">Profile match</p>
           <p className="mt-1 text-3xl font-semibold">Fit {recommendation.fitScore}</p>
           <p className="mt-1 max-w-48 text-xs leading-5 text-forest-100">Based on {recommendation.dataCoverage}% comparable known inputs</p>

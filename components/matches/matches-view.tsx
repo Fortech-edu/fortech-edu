@@ -53,12 +53,12 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
   }
 
   return (
-    <div className="space-y-5">
-      <section className="overflow-hidden rounded-[2rem] bg-forest-900 text-white shadow-[0_20px_65px_rgba(23,52,41,.14)]" aria-labelledby="matches-title">
+    <div className="matches-view space-y-8">
+      <section className="product-hero" aria-labelledby="matches-title">
         <div className="grid lg:grid-cols-[minmax(0,1.55fr)_minmax(18rem,.75fr)]">
           <div className="p-6 sm:p-9">
             <nav aria-label="Profile journey" className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-100">Profile <span aria-hidden="true">→</span> Diagnosis <span aria-hidden="true">→</span> <span className="text-white">Matches</span></nav>
-            <h1 id="matches-title" className="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">Programs for your profile</h1>
+            <h1 id="matches-title" className="mt-5 max-w-4xl text-4xl font-semibold leading-[0.92] sm:text-6xl lg:text-7xl">Programs for your profile</h1>
             <p className="mt-4 max-w-2xl leading-7 text-forest-100">Ranked by the existing deterministic matching system: eligibility, then Fit Score, then data coverage.</p>
             <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-white">Fit Score measures profile alignment — not admission probability.</p>
             <Link href="/onboarding" className="mt-6 inline-flex min-h-11 items-center rounded-full border border-white/35 px-5 font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">Edit profile</Link>
@@ -84,7 +84,7 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
         <p className="hidden text-sm text-muted sm:block">Highest-ranked first</p>
       </div>
 
-      <aside id="comparison-selection" className="rounded-2xl border border-forest-200 bg-white p-4 shadow-[0_12px_35px_rgba(23,52,41,.06)] sm:flex sm:items-center sm:justify-between" aria-label="Comparison selection">
+      <aside id="comparison-selection" className="comparison-bar p-4 sm:flex sm:items-center sm:justify-between" aria-label="Comparison selection">
         <div>
           <p className="font-semibold text-forest-900">{selected.length} selected</p>
           <p className="mt-0.5 text-sm text-muted">{selected.length === 2 ? "Your comparison is ready." : `Select ${2 - selected.length} more to compare.`}</p>
@@ -127,7 +127,7 @@ function ImpactPanel({ impact }: { impact: ChangeImpact }) {
   const programs = impact.programChanges.slice(0, 3);
 
   return (
-    <section className="rounded-[1.75rem] border border-sand-300 bg-sand-100 p-5 shadow-[0_14px_40px_rgba(23,52,41,.05)] sm:p-7" aria-labelledby="impact-title">
+    <section className="accent-section p-5 sm:p-7" aria-labelledby="impact-title">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,.9fr)]">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Recent change impact</p>

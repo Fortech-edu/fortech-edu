@@ -71,14 +71,14 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
   }
 
   return (
-    <div className="space-y-5">
+    <div className="program-detail space-y-5">
       <Link href="/matches" className="inline-flex min-h-11 items-center rounded-full px-2 font-semibold text-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">← Back to matches</Link>
-      <article className="overflow-hidden rounded-3xl border border-forest-100 bg-white shadow-[0_18px_60px_rgba(23,52,41,.07)]">
-        <header className="border-b border-forest-100 bg-[linear-gradient(135deg,#ffffff_20%,#f0f7f3)] p-6 sm:p-9">
+      <article className="program-detail-surface overflow-hidden">
+        <header className="border-b border-forest-100 bg-[var(--surface)] p-6 sm:p-9 lg:p-12">
           <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-forest-600">{program.universityName}</p>
-              <h1 className="mt-1 text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">{program.programName}</h1>
+              <h1 className="mt-3 max-w-4xl text-4xl font-semibold leading-[0.92] text-forest-900 sm:text-6xl">{program.programName}</h1>
               <p className="mt-3 text-muted">{program.country ?? "Unknown country"} · {program.degreeLevel ?? "Unknown degree"}</p>
               <div className="mt-5 flex flex-wrap items-center gap-2"><EligibilityBadge status={recommendation.eligibility} /><SourceState recommendation={recommendation} /></div>
             </div>
@@ -91,7 +91,7 @@ function ProgramDetail({ profile, recommendation, validIds }: { profile: Student
 
           <div className="mt-9 grid gap-8 border-t border-forest-100 pt-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,.7fr)]">
             <WhyProgramAppears recommendation={recommendation} />
-            <details className="group rounded-2xl bg-forest-50 p-4">
+            <details className="group border-y border-black/10 bg-forest-50 p-4">
               <summary className="min-h-11 cursor-pointer list-none py-2 font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">How Fit {recommendation.fitScore} is calculated <span aria-hidden="true" className="float-right group-open:rotate-180">⌄</span></summary>
               <div className="mt-3"><ScoreBreakdown recommendation={recommendation} /></div>
             </details>

@@ -43,15 +43,15 @@ function Comparison({ recommendations }: { recommendations: [Recommendation, Rec
   }
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-3xl bg-forest-900 p-6 text-white shadow-[0_20px_65px_rgba(23,52,41,.14)] sm:p-9">
+    <div className="compare-view space-y-8">
+      <section className="product-hero p-6 text-white sm:p-9 lg:p-12">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-forest-100">Program comparison</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Compare what matters, criterion by criterion.</h1>
+        <h1 className="mt-5 max-w-5xl text-4xl font-semibold leading-[0.92] sm:text-6xl lg:text-7xl">Compare what matters, criterion by criterion.</h1>
         <p className="mt-3 max-w-2xl leading-7 text-forest-100">Differences are highlighted without choosing a winner. Unknown information stays unknown.</p>
         <Link href="/matches" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-white px-5 font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">← Back to matches</Link>
       </section>
 
-      <section className="overflow-hidden rounded-3xl border border-forest-100 bg-white shadow-[0_16px_50px_rgba(23,52,41,.06)]" aria-labelledby="comparison-matrix-title">
+      <section className="comparison-matrix overflow-hidden" aria-labelledby="comparison-matrix-title">
         <div className="p-6 sm:p-8">
           <h2 id="comparison-matrix-title" className="text-2xl font-semibold tracking-tight text-forest-900">Side-by-side facts</h2>
           <p className="mt-2 text-sm leading-6 text-muted">Fit is profile alignment, not admission probability. Tuition is compared only when currency and billing period match.</p>
@@ -64,7 +64,7 @@ function Comparison({ recommendations }: { recommendations: [Recommendation, Rec
 
           <dl className="divide-y divide-forest-100 border-y border-forest-100 md:border-t-0">
             {rows.map((row) => (
-              <div key={row.key} className="grid gap-4 py-5 md:grid-cols-[minmax(9rem,.7fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-6 md:px-4">
+              <div key={row.key} className="grid gap-4 py-6 md:grid-cols-[minmax(9rem,.7fr)_minmax(0,1fr)_minmax(0,1fr)] md:gap-6 md:px-4">
                 <dt>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-semibold text-forest-900">{row.label}</span>
@@ -79,7 +79,7 @@ function Comparison({ recommendations }: { recommendations: [Recommendation, Rec
           </dl>
         </div>
 
-        <section className="border-t border-forest-100 bg-forest-50 p-6 sm:p-8" aria-labelledby="roadmap-choice-title">
+        <section className="border-t border-forest-100 bg-[color:var(--page)] p-6 sm:p-8" aria-labelledby="roadmap-choice-title">
           <h2 id="roadmap-choice-title" className="text-xl font-semibold text-forest-900">Build a roadmap for either program</h2>
           <p className="mt-2 text-sm leading-6 text-muted">Both choices use the same existing roadmap flow.</p>
           <div className="mt-5 grid gap-3 md:grid-cols-2">

@@ -49,12 +49,12 @@ export function DiagnosisView() {
   const unknownCount = diagnosis.missingInformation.length;
 
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-[2rem] bg-forest-900 text-white shadow-[0_20px_65px_rgba(23,52,41,.14)]" aria-labelledby="analysis-title">
+    <div className="diagnosis-view space-y-8">
+      <section className="product-hero" aria-labelledby="analysis-title">
         <div className="grid lg:grid-cols-[minmax(0,1.65fr)_minmax(18rem,.85fr)]">
           <div className="p-6 sm:p-9 lg:p-10">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-forest-100">Your profile analysis</p>
-            <h1 id="analysis-title" className="mt-4 max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl lg:text-5xl">
+            <h1 id="analysis-title" className="mt-5 max-w-3xl text-4xl font-semibold leading-[0.92] sm:text-6xl lg:text-7xl">
               Here’s where your profile stands
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-forest-100 sm:text-lg">
@@ -82,14 +82,14 @@ export function DiagnosisView() {
       <DiagnosisEnhancement profile={profile} diagnosis={diagnosis} />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,.85fr)]">
-        <section className="rounded-3xl border border-forest-100 bg-white p-6 shadow-[0_16px_45px_rgba(23,52,41,.05)] sm:p-8" aria-labelledby="strongest-signals-title">
+        <section className="editorial-section p-6 sm:p-8" aria-labelledby="strongest-signals-title">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">What we can use now</p>
           <h2 id="strongest-signals-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Your strongest known signals</h2>
           <p className="mt-2 max-w-2xl leading-7 text-muted">Known information that can already guide program matching and planning.</p>
           <AnalysisItems items={diagnosis.strengths} marker="✓" empty="No known planning signals yet." />
         </section>
 
-        <section className="rounded-3xl border border-sand-300 bg-sand-100 p-6 sm:p-8" aria-labelledby="focus-next-title">
+        <section className="accent-section p-6 sm:p-8" aria-labelledby="focus-next-title">
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Priorities</p>
           <h2 id="focus-next-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Focus next</h2>
           <p className="mt-2 leading-7 text-ink/80">The shortest list of profile-level actions worth your attention now.</p>
@@ -97,7 +97,7 @@ export function DiagnosisView() {
         </section>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8" aria-labelledby="unknown-title">
+      <section className="editorial-section p-6 sm:p-8" aria-labelledby="unknown-title">
         <div className="grid gap-5 lg:grid-cols-[minmax(15rem,.7fr)_minmax(0,1.3fr)] lg:items-start">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">Needs verification</p>
@@ -108,7 +108,7 @@ export function DiagnosisView() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-5 rounded-3xl border border-forest-200 bg-white p-6 shadow-[0_16px_45px_rgba(23,52,41,.05)] sm:flex-row sm:items-center sm:justify-between sm:p-8" aria-labelledby="matches-cta-title">
+      <section className="product-cta flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8" aria-labelledby="matches-cta-title">
         <div>
           <h2 id="matches-cta-title" className="text-xl font-semibold text-forest-900">See how your profile compares with verified programs</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">Matching remains deterministic. AI does not calculate Fit Score or eligibility.</p>
@@ -136,7 +136,7 @@ function AnalysisItems({ items, marker, empty, compact = false }: { items: strin
   return (
     <ul className={`${compact ? "mt-0 grid gap-3 sm:grid-cols-2" : "mt-6 space-y-3"}`}>
       {items.length > 0 ? items.map((item) => (
-        <li key={item} className="flex gap-3 rounded-2xl bg-[#fbfcfa] p-4 text-sm leading-6 text-ink">
+        <li key={item} className="flex gap-3 border-t border-black/10 py-4 text-sm leading-6 text-ink first:border-t-0">
           <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-forest-100 text-xs font-bold text-forest-700" aria-hidden="true">{marker}</span>
           <span>{item}</span>
         </li>

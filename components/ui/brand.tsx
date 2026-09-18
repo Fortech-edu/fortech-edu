@@ -4,13 +4,13 @@ export function Brand() {
   return (
     <Link
       href="/"
-      className="inline-flex items-center gap-2.5 rounded-lg font-semibold text-forest-900 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-600"
-      aria-label="Admission Journey home"
+      className="product-brand inline-flex items-center gap-3 font-semibold tracking-[-0.03em] text-[var(--ink)]"
+      aria-label="Fortech home"
     >
-      <span className="flex size-9 items-center justify-center rounded-xl bg-forest-700 text-sm font-bold text-white">
-        AJ
+      <span className="product-brand-mark flex size-9 items-center justify-center rounded-full bg-[var(--dark)] text-sm font-bold text-white">
+        F
       </span>
-      <span>Admission Journey</span>
+      <span className="text-lg">Fortech</span>
     </Link>
   );
 }

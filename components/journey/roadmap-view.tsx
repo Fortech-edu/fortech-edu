@@ -60,12 +60,12 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
   }
 
   return (
-    <div className="space-y-5">
-      <section className="overflow-hidden rounded-3xl border border-forest-100 bg-white shadow-[0_18px_60px_rgba(23,52,41,.08)]">
-        <div className="bg-[linear-gradient(135deg,#ffffff_20%,#f0f7f3)] p-6 sm:p-9">
+    <div className="roadmap-view space-y-8">
+      <section className="roadmap-hero overflow-hidden">
+        <div className="bg-[var(--surface)] p-6 sm:p-9 lg:p-12">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-600">Your path to this program</p>
           <p className="mt-5 font-semibold text-forest-600">{program.universityName}</p>
-          <h1 className="mt-1 break-words text-3xl font-semibold tracking-tight text-forest-900 sm:text-4xl">{program.programName}</h1>
+          <h1 className="mt-3 max-w-5xl break-words text-4xl font-semibold leading-[0.92] text-forest-900 sm:text-6xl">{program.programName}</h1>
           <p className="mt-3 text-sm text-muted">{program.country ?? "Country unknown"} · {program.degreeLevel ?? "Degree unknown"}</p>
           <div className="mt-5"><EligibilityBadge status={recommendation.eligibility} /></div>
         </div>
@@ -77,7 +77,7 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <section className="rounded-3xl bg-forest-900 p-6 text-white shadow-[0_18px_60px_rgba(23,52,41,.12)] sm:p-8" aria-labelledby="next-action-title">
+        <section className="product-hero p-6 text-white sm:p-8" aria-labelledby="next-action-title">
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-100">Next action</p>
           {nextAction ? (
             <div className="mt-4">
@@ -96,7 +96,7 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
           )}
         </section>
 
-        <section className="rounded-3xl border border-forest-100 bg-white p-6" aria-labelledby="progress-title">
+        <section className="editorial-section p-6" aria-labelledby="progress-title">
           <h2 id="progress-title" className="text-lg font-semibold text-forest-900">Completed roadmap steps</h2>
           <p className="mt-3 text-4xl font-semibold text-forest-700">{progress.percentage}%</p>
           <p className="mt-1 text-sm text-muted">{progress.completed} of {progress.total} tasks completed</p>
@@ -114,17 +114,17 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
         </section>
       ) : null}
 
-      <section aria-labelledby="roadmap-title">
+      <section className="pt-3" aria-labelledby="roadmap-title">
         <div className="px-1">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-forest-600">Program-specific roadmap</p>
           <h2 id="roadmap-title" className="mt-2 text-2xl font-semibold text-forest-900 sm:text-3xl">What to do next</h2>
         </div>
-        <div className="mt-5 space-y-5">
+        <div className="mt-8 space-y-10">
           {roadmapPhases.map((phase) => {
             const phaseItems = items.filter((item) => item.phase === phase.id);
             return (
-              <section key={phase.id} className="overflow-hidden rounded-3xl border border-forest-100 bg-white" aria-labelledby={`phase-${phase.id}`}>
-                <header className="border-b border-forest-100 bg-forest-50 px-5 py-5 sm:px-7">
+              <section key={phase.id} className="roadmap-phase overflow-hidden" aria-labelledby={`phase-${phase.id}`}>
+                <header className="border-b border-forest-100 px-5 py-6 sm:px-7">
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-forest-600">{phase.label}</p>
                   <h3 id={`phase-${phase.id}`} className="mt-1 text-xl font-semibold text-forest-900">{phase.description}</h3>
                 </header>
@@ -134,7 +134,7 @@ function RoadmapContent({ recommendation, items }: { recommendation: Recommendat
                       const completed = completedIds.includes(item.id);
                       const descriptionId = `${item.id}-description`;
                       return (
-                        <li key={item.id} className={`grid gap-4 p-5 sm:grid-cols-[2.75rem_minmax(0,1fr)] sm:px-7 ${completed ? "bg-forest-50/60" : "bg-white"}`}>
+                        <li key={item.id} className={`grid gap-4 p-5 sm:grid-cols-[2.75rem_minmax(0,1fr)] sm:px-7 ${completed ? "bg-forest-50/60" : ""}`}>
                           <label className="flex size-11 cursor-pointer items-center justify-center rounded-full border border-forest-200 bg-white focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-forest-600">
                             <input type="checkbox" checked={completed} onChange={() => toggle(item.id)} aria-label={`Mark ${item.title} ${completed ? "incomplete" : "complete"}`} aria-describedby={descriptionId} className="size-5 accent-forest-600" />
                           </label>

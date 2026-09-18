@@ -46,7 +46,7 @@ export function DiagnosisEnhancement({ profile, diagnosis }: { profile: StudentP
   const copy = diagnosisExplanationCopy(result?.source ?? null);
 
   return (
-    <section className="rounded-3xl border border-sand-300 bg-sand-100/70 p-5 shadow-[0_16px_45px_rgba(23,52,41,.05)] sm:p-7" aria-labelledby="diagnosis-explanation-title">
+    <section className="accent-section p-5 sm:p-7" aria-labelledby="diagnosis-explanation-title">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white text-forest-700 shadow-sm" aria-hidden="true">✦</span>
         <div>
@@ -122,7 +122,7 @@ export function RecommendationEnhancement({ profile, recommendation }: { profile
   }, [cacheKey, requestBody]);
 
   return (
-    <section className="mt-7 rounded-2xl bg-forest-50 p-5" aria-labelledby="ai-fit-title" aria-live="polite">
+    <section className="accent-section mt-8 p-5 sm:p-7" aria-labelledby="ai-fit-title" aria-live="polite">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="ai-fit-title" className="text-xl font-semibold text-forest-900">Personalized explanation</h2>
         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-forest-700">{loading ? "Preparing explanation…" : result.source === "ai" ? "AI-assisted" : "Based on match facts"}</span>
