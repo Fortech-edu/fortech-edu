@@ -187,9 +187,20 @@ function requirementCriterion(
     };
   }
 
+  if (key === "academic" && normalized(requirement.label) !== "gpa") {
+    return {
+      key,
+      label,
+      profileValue,
+      programValue: `${requirement.label} ${formatNumber(requirement.minimumScore)} minimum`,
+      status: "Not comparable",
+      detail: "Your GPA and this academic requirement use different scales, so no numeric gap is calculated.",
+    };
+  }
+
   const programValue = `${requirement.label} ${formatNumber(requirement.minimumScore)} minimum`;
   if (value === null) {
-    return { key, label, profileValue, programValue, status: "Action needed", detail: "Your score is not provided; the program requirement is known." };
+    return { key, label, profileValue, programValue, status: "Needs verification", detail: "Your current value is not provided, so this is not treated as a confirmed gap." };
   }
   return value >= requirement.minimumScore
     ? { key, label, profileValue, programValue, status: "Match", detail: "Your provided score meets this published minimum." }
