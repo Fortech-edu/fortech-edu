@@ -12,16 +12,30 @@ export function diagnosisFallback(input: DiagnosisAIInput): DiagnosisAIOutput {
   const { programName, universityName } = input.programFacts;
   const target = `${programName} at ${universityName}`;
   const gap = input.biggestConfirmedGap;
-  const verification = input.verificationItems[0];
   const nextAction = input.nextAction;
+  const strengths = input.requirementCoverage
+    .filter(({ status }) => status === "Match")
+    .slice(0, 3)
+    .map(({ label }) => `${label} matches the published requirement for this program.`);
+  const uncertainties = input.verificationItems.slice(0, 3).map(
+    ({ label, detail }) => `${label} still needs verification. ${detail}`,
+  );
+
   return {
     summary: gap
-      ? `For ${target}, ${gap.label} is a confirmed gap: ${gap.profileValue} current against ${gap.programValue}. ${gap.detail}`
-      : `For ${target}, no provided value is below a directly comparable published minimum. This does not guarantee admission.`,
-    focus: [
-      nextAction ? `Next action: ${nextAction.title}. ${nextAction.description}` : null,
-      verification ? `Needs verification: ${verification.label}. ${verification.detail}` : null,
-    ].filter((item): item is string => item !== null),
+      ? `For ${target}, the one confirmed priority is ${gap.label}: ${gap.profileValue} current against ${gap.programValue}. ${gap.detail} Everything else in your supplied profile is either on track or awaiting verification.`
+      : `For ${target}, no provided value is below a directly comparable published minimum. This does not guarantee admission. The fastest progress now comes from resolving the verification items below.`,
+    strengths,
+    uncertainties,
+    priority: gap
+      ? `${gap.label} is the priority: ${gap.profileValue} current against ${gap.programValue}, so closing it changes your confirmed readiness the most. ${gap.detail}`
+      : nextAction
+        ? `${nextAction.title}. ${nextAction.description}`
+        : "No confirmed gap or verification item is currently recorded for this target.",
+    nextSteps: nextAction ? [`${nextAction.title}. ${nextAction.description}`] : [],
+    advisorNote: gap
+      ? `Concentrate on ${gap.label} before anything else; the remaining verification items matter, but none of them is your current bottleneck.`
+      : `Nothing supplied is blocking right now. Keep your confirmed facts up to date and clear the verification items when convenient; none of them should delay you.`,
   };
 }
 

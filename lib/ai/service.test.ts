@@ -13,7 +13,7 @@ import {
   diagnosisExplanationCopy,
   parseDiagnosisResult,
 } from "./diagnosis-presentation.ts";
-import { toAIProfile, toDiagnosisAIInput } from "./schemas.ts";
+import { toAIProfile, toDiagnosisAIInput, validateDiagnosisOutput } from "./schemas.ts";
 import type { RecommendationAIInput } from "./schemas.ts";
 import { createAIService } from "./service.ts";
 
@@ -96,12 +96,16 @@ test("invalid AI response returns fallback", async () => {
   assert.equal(messages.at(-1), "AI diagnosis: provider_invalid_response");
 });
 
-test("valid diagnosis AI output preserves source and allows an empty focus list", async () => {
+test("valid diagnosis AI output preserves source and allows empty advisor arrays", async () => {
   let calls = 0;
   const messages: string[] = [];
   const content = {
     summary: "Your known profile details support a focused program review.",
-    focus: [],
+    strengths: [],
+    uncertainties: [],
+    priority: "Keep your confirmed scores up to date.",
+    nextSteps: [],
+    advisorNote: "No supplied item is blocking right now.",
   };
   const provider: AIProvider = { generateJson: async () => { calls += 1; return content; } };
   const result = await createAIService(provider, { log: (message) => messages.push(message) }).generateDiagnosis(diagnosisInput);
@@ -111,6 +115,12 @@ test("valid diagnosis AI output preserves source and allows an empty focus list"
   assert.deepEqual(result.content, content);
   assert.equal(parseDiagnosisResult(result, diagnosisInput)?.source, "ai");
   assert.equal(messages.at(-1), "AI diagnosis: provider_success");
+});
+
+test("stale cached diagnosis responses in the old shape fail validation safely", () => {
+  const legacy = { summary: "Old cached explanation.", focus: [] };
+  assert.equal(validateDiagnosisOutput(legacy), null);
+  assert.equal(parseDiagnosisResult({ source: "ai", content: legacy }, diagnosisInput), null);
 });
 
 test("target-aware diagnosis input contains the deterministic confirmed gap and next action", () => {
@@ -145,17 +155,19 @@ test("target-aware fallback names the selected target, confirmed gap, and determ
   assert.match(text, /University of Twente/);
   assert.match(text, /IELTS/);
   assert.match(text, /Raise your IELTS score to the published minimum/);
+  assert.deepEqual(Object.keys(result.content).sort(), ["advisorNote", "nextSteps", "priority", "strengths", "summary", "uncertainties"]);
 });
 
 test("diagnosis AI cannot change a deterministic requirement status", async () => {
   const candidate = { ...profile, ieltsScore: 5.5 };
   const input = toDiagnosisAIInput(candidate, diagnosisProgram, diagnoseTarget(candidate, diagnosisProgram)!);
   const result = await createAIService(providerReturning({
-    summary: "The IELTS requirement is met.",
-    focus: [
-      "Next action: Verify how your school qualification is evaluated.",
-      "Needs verification: Application deadline. No verified deadline is available in the current data.",
-    ],
+    summary: "For Technical Computer Science at University of Twente, your profile is in good shape overall.",
+    strengths: ["IELTS meets the published requirement for this program."],
+    uncertainties: ["Application deadline: No verified deadline is available in the current data."],
+    priority: "Verify how your school qualification is evaluated.",
+    nextSteps: ["Verify how your school qualification is evaluated."],
+    advisorNote: "Treat the qualification check as the current focus.",
   }), { log: () => undefined }).generateDiagnosis(input);
 
   assert.equal(result.source, "fallback");
@@ -168,7 +180,11 @@ test("diagnosis AI cannot resolve an unknown requirement without evidence", asyn
   const input = toDiagnosisAIInput(candidate, target, diagnoseTarget(candidate, target)!);
   const result = await createAIService(providerReturning({
     summary: "The application deadline is flexible.",
-    focus: [],
+    strengths: [],
+    uncertainties: [],
+    priority: "Keep your confirmed scores up to date.",
+    nextSteps: [],
+    advisorNote: "No supplied item is blocking right now.",
   }), { log: () => undefined }).generateDiagnosis(input);
 
   assert.equal(result.source, "fallback");
@@ -179,19 +195,27 @@ test("diagnosis safety accepts equivalent formatting of a known number", async (
   const input = diagnosisInput;
   const result = await createAIService(providerReturning({
     summary: "Your IELTS 6.0 meets the published minimum.",
-    focus: [],
+    strengths: ["IELTS matches the published requirement."],
+    uncertainties: [],
+    priority: "No confirmed gap appears in the supplied comparable values.",
+    nextSteps: [],
+    advisorNote: "Keep the confirmed score current.",
   }), { log: () => undefined }).generateDiagnosis(input);
 
   assert.equal(result.source, "ai");
 });
 
-test("resolved-gap AI explanation can describe remaining verification work", async () => {
+test("resolved-gap advisor output can describe remaining verification work", async () => {
   const candidate = { ...profile, ieltsScore: 6.5 };
   const input = toDiagnosisAIInput(candidate, diagnosisProgram, diagnoseTarget(candidate, diagnosisProgram)!);
   const messages: string[] = [];
   const result = await createAIService(providerReturning({
     summary: "For Technical Computer Science at University of Twente, IELTS 6.5 meets the published minimum of 6.0. Academic requirements and the application deadline still need verification.",
-    focus: [],
+    strengths: ["IELTS matches the published requirement."],
+    uncertainties: ["Academic requirements still need verification.", "The application deadline still needs verification."],
+    priority: "Verify the academic qualification and the deadline before assembling documents.",
+    nextSteps: ["Verify how your school qualification is evaluated."],
+    advisorNote: "Verification items come first; nothing else in the supplied profile is a priority.",
   }), { log: (message) => messages.push(message) }).generateDiagnosis(input);
 
   assert.equal(result.source, "ai", messages.join(", "));
@@ -202,20 +226,31 @@ test("resolved-gap AI explanation can describe remaining verification work", asy
 test("diagnosis safety rejects an invented numeric fact", async () => {
   const result = await createAIService(providerReturning({
     summary: "The IELTS minimum is 7.5.",
-    focus: [],
+    strengths: [],
+    uncertainties: [],
+    priority: "Raise IELTS to 7.5.",
+    nextSteps: [],
+    advisorNote: "Focus on IELTS.",
   }), { log: () => undefined }).generateDiagnosis(diagnosisInput);
 
   assert.equal(result.source, "fallback");
 });
 
 test("diagnosis explanation copy distinguishes loading, AI, and fallback", () => {
-  assert.equal(diagnosisExplanationCopy(null).disclosure.includes("Creating"), true);
-  assert.equal(diagnosisExplanationCopy("ai").disclosure.includes("deterministic diagnosis"), true);
-  assert.equal(diagnosisExplanationCopy("fallback").disclosure.includes("admissions analysis itself is unchanged"), true);
+  assert.equal(diagnosisExplanationCopy(null).disclosure.includes("Preparing an interpretation"), true);
+  assert.equal(diagnosisExplanationCopy("ai").disclosure.includes("cannot change requirements"), true);
+  assert.equal(diagnosisExplanationCopy("fallback").disclosure.includes("deterministic summary"), true);
 });
 
 test("diagnosis result presentation preserves honest AI and fallback source states", () => {
-  const content = { summary: "The deterministic diagnosis remains authoritative.", focus: [] };
+  const content = {
+    summary: "The deterministic diagnosis remains authoritative.",
+    strengths: [],
+    uncertainties: [],
+    priority: "Verification items first.",
+    nextSteps: [],
+    advisorNote: "Keep facts current.",
+  };
   assert.equal(parseDiagnosisResult({ source: "ai", content }, diagnosisInput)?.source, "ai");
   assert.equal(parseDiagnosisResult({ source: "fallback", content }, diagnosisInput)?.source, "fallback");
 });
@@ -223,7 +258,11 @@ test("diagnosis result presentation preserves honest AI and fallback source stat
 test("diagnosis AI cannot replace deterministic diagnosis", async () => {
   const result = await createAIService(providerReturning({
     summary: "A rewritten explanation.",
-    focus: [],
+    strengths: [],
+    uncertainties: [],
+    priority: "Ignored.",
+    nextSteps: [],
+    advisorNote: "Ignored.",
     deterministicDiagnosis: { strengths: [], gaps: [], missingInformation: [] },
   }), { log: () => undefined }).generateDiagnosis(diagnosisInput);
 
@@ -305,7 +344,11 @@ test("prompt-like profile text cannot override factual constraints", async () =>
   };
   const result = await createAIService(providerReturning({
     summary: "You have a 95% chance of admission.",
-    focus: [],
+    strengths: [],
+    uncertainties: [],
+    priority: "Celebrate.",
+    nextSteps: [],
+    advisorNote: "Proceed confidently.",
   }), { log: (message) => messages.push(message) }).generateDiagnosis(injected);
   assert.equal(result.source, "fallback");
   assert.equal(messages.at(-1), "AI diagnosis: provider_unsafe_output");
