@@ -323,3 +323,21 @@ Sequencing constraint worth repeating: **everything in steps 3–5 touches the s
 - **AITU and ASU `languageOfInstruction`** — unverified (`null`); official-source research outstanding.
 - **`applicationDocuments`** for all 18 programs — unverified (typed, all null); document-requirement research outstanding (TZ §9.2).
 - **`npx tsc --noEmit` failure on `app/layout.tsx` (`LayoutProps`)** — pre-existing at baseline; presumably resolves with Next generated types after `next build`/`next dev`; a full build was not run in this docs-only audit.
+
+---
+
+## 7. Status addendum (added after publication)
+
+This audit analyzes `origin/main` at **`bf78c6d`** as stated in the header. In a fast-moving repository, the following PRs merged during and shortly after the audit window (verified via merge commits / PR titles only — their contents were **not** re-audited unless noted):
+
+| PR | Branch | Addresses |
+|---|---|---|
+| #4 | `feature/language-of-instruction` | G6 (P0.3 preferred language — contents were inspected in detail during this audit) |
+| #6 | `feature/activities-context` | G7 (P0.4 activities — contents were inspected in detail from the merged diff: `StudentProfile.activitiesAndAchievements?`, onboarding textarea with the "does not affect deterministic matching" note, review row, diagnosis strength + profile panel, roadmap application-materials wording, legacy-tolerant storage/sync with required/allowed-key validation, and a test proving activities do not change Fit Score or eligibility) |
+| #8 | `feature/goal-first-target` | G1/G2/G3 (Task 4 goal-first target flow) |
+| #10 | `feature/instant-diagnosis` | G10a (Task 5 instant diagnosis before signup) |
+| #11 | `feature/onboarding-prefill` | G5/G4 (Task 6 state transfer into onboarding) |
+| #12 | `feature/full-diagnosis` | G10b (Task 7 target-centered full diagnosis) |
+| #13 | `feature/match-evidence` | G14/matches evidence (Task 8) |
+
+Consequently, the "current implementation" sections above describe the `bf78c6d` baseline, and the affected gaps (G1–G3, G5, G7, G10) should be considered **at least partially addressed on current main**. The remaining sequence at publication time is Task 9 (roadmap action layer) onward, per `docs/IMPLEMENTATION_PLAN.md`. The §4 field checklist and §G8 migration patterns were confirmed current as of PR #6.
