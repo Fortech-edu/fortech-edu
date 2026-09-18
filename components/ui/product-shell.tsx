@@ -1,27 +1,150 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Brand } from "./brand";
 
+const navLinks = [
+  { href: "/diagnosis", label: "Diagnosis" },
+  { href: "/matches", label: "Matches" },
+  { href: "/roadmap", label: "Roadmap" },
+];
+
 export function ProductShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isActive = (href: string) => {
+    if (!pathname) return false;
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(`${href}/`);
+  };
+
   return (
-    <main className="product-shell flex min-h-dvh flex-col">
-      <header className="product-header sticky top-0 z-50 border-b border-black/15 bg-[color:var(--page)]/90 backdrop-blur-md">
-        <div className="mx-auto flex h-[72px] w-full max-w-[1600px] items-center justify-between gap-4 px-5 sm:px-8 lg:px-10">
+    <main className="product-shell flex min-h-dvh flex-col bg-[#F5F9FF] text-[#10233F]">
+      {/* 64px Desktop Header */}
+      <header className="product-header sticky top-0 z-50 border-b border-[#D7E7FA] bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex h-16 w-full max-w-[1440px] items-center justify-between gap-4 px-4 sm:px-8">
           <Brand />
-          <nav aria-label="Product navigation" className="flex items-center gap-1 sm:gap-5">
-            <Link href="/diagnosis" className="product-nav-link hidden sm:inline-flex">Diagnosis</Link>
-            <Link href="/matches" className="product-nav-link hidden sm:inline-flex">Matches</Link>
-            <Link href="/roadmap" className="product-nav-link hidden md:inline-flex">Roadmap</Link>
-            <Link href="/onboarding" className="product-nav-action">Profile</Link>
+
+          {/* Desktop Navigation */}
+          <nav aria-label="Product navigation" className="hidden sm:flex items-center gap-6">
+            {navLinks.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`product-nav-link text-sm font-semibold transition-colors py-2 ${
+                    active
+                      ? "text-[#1677FF] relative after:absolute after:-bottom-[19px] after:inset-x-0 after:h-0.5 after:bg-[#1677FF]"
+                      : "text-[#64748B] hover:text-[#10233F]"
+                  }`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </nav>
+
+          {/* Right utility cluster: Future language indicator + Profile action */}
+          <div className="flex items-center gap-3">
+            {/* Reserved logical slot for future language selector (EN / RU / KZ) */}
+            <div
+              className="hidden md:inline-flex items-center gap-1 rounded-lg border border-[#D7E7FA] bg-[#EDF4FD] px-2.5 py-1 text-xs font-semibold text-[#64748B]"
+              title="Language selection (EN / RU / KZ coming soon)"
+              aria-label="Language selector: English active"
+            >
+              <span className="text-[#1677FF] font-bold">EN</span>
+              <span className="text-[#B7D2F0]">/</span>
+              <span className="opacity-60">RU</span>
+              <span className="text-[#B7D2F0]">/</span>
+              <span className="opacity-60">KZ</span>
+            </div>
+
+            <Link
+              href="/onboarding"
+              className={`inline-flex min-h-9 items-center justify-center rounded-lg px-4 text-xs font-semibold transition shadow-xs ${
+                isActive("/onboarding")
+                  ? "bg-[#1677FF] text-white"
+                  : "bg-white text-[#10233F] border border-[#B7D2F0] hover:bg-[#EDF4FD]"
+              }`}
+            >
+              Profile
+            </Link>
+
+            {/* Mobile menu toggle */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="sm:hidden inline-flex size-9 items-center justify-center rounded-lg border border-[#D7E7FA] text-[#10233F] hover:bg-[#EDF4FD] transition"
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <span className="text-base font-bold">✕</span>
+              ) : (
+                <span className="text-lg leading-none font-bold">☰</span>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <nav
+            aria-label="Mobile navigation"
+            className="sm:hidden border-t border-[#D7E7FA] bg-white px-4 py-3 space-y-1 shadow-lg animate-in slide-in-from-top-2 duration-150"
+          >
+            {navLinks.map((link) => {
+              const active = isActive(link.href);
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex min-h-[44px] items-center rounded-lg px-3 text-sm font-semibold transition ${
+                    active
+                      ? "bg-[#EDF4FD] text-[#1677FF]"
+                      : "text-[#64748B] hover:bg-[#F5F9FF] hover:text-[#10233F]"
+                  }`}
+                  aria-current={active ? "page" : undefined}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            <div className="pt-2 pb-1 border-t border-[#D7E7FA] flex items-center justify-between text-xs text-[#64748B] px-3">
+              <span>Language:</span>
+              <div className="flex items-center gap-1 font-semibold">
+                <span className="text-[#1677FF] font-bold">EN</span>
+                <span>/</span>
+                <span className="opacity-60">RU</span>
+                <span>/</span>
+                <span className="opacity-60">KZ</span>
+              </div>
+            </div>
+          </nav>
+        )}
       </header>
-      <div className="product-page mx-auto w-full max-w-[1400px] flex-1 px-5 pb-20 pt-8 sm:px-8 sm:pt-12 lg:px-10 lg:pb-28 lg:pt-16">
+
+      {/* Main Content Area */}
+      <div className="product-page mx-auto w-full max-w-[1400px] flex-1 px-4 pb-20 pt-6 sm:px-8 sm:pt-10 lg:pb-28">
         {children}
       </div>
-      <footer className="mt-auto border-t border-black/15 px-5 py-8 sm:px-8 lg:px-10">
-        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-2 text-xs text-[var(--muted)] sm:flex-row sm:items-center sm:justify-between">
+
+      {/* Footer */}
+      <footer className="mt-auto border-t border-[#D7E7FA] bg-white px-4 py-6 sm:px-8">
+        <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-2 text-xs text-[#64748B] sm:flex-row sm:items-center sm:justify-between">
           <p>Fortech supports decisions; universities make admission decisions.</p>
-          <Link href="/" className="product-text-link font-semibold text-[var(--ink)]">Return to landing</Link>
+          <Link
+            href="/"
+            className="product-text-link font-semibold text-[#1677FF] hover:underline"
+          >
+            Return to landing
+          </Link>
         </div>
       </footer>
     </main>
