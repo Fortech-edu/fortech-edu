@@ -2,18 +2,20 @@ import Link from "next/link";
 import { Brand } from "@/components/ui/brand";
 import { programs } from "@/data/programs";
 
-/**
- * Coverage is derived from the dataset, never typed by hand.
- * If a program is added or removed, the landing page stays truthful on its own.
- */
+const verificationDates = new Set(programs.flatMap(({ verificationDate }) => verificationDate ? [verificationDate] : []));
+
 const coverage = {
   programs: programs.length,
   universities: new Set(programs.map((item) => item.universityName)).size,
-  countries: new Set(programs.map((item) => item.country).filter(Boolean)).size,
-  /** The two directions a student can pick in onboarding, not the finer program taxonomy. */
+  countries: new Set(programs.flatMap(({ country }) => country?.trim() ? [country.trim()] : [])).size,
   directions: ["Computer Science", "Business"],
-  verifiedOn: programs.find((item) => item.verificationDate)?.verificationDate ?? null,
 };
+
+const verificationMessage = verificationDates.size === 1
+  ? `Program data verified on ${[...verificationDates][0]}.`
+  : verificationDates.size > 1
+    ? "Program verification dates vary by program. See each program’s sources for details."
+    : "Program data verified against official university sources.";
 
 const stats = [
   [String(coverage.programs), "verified programs", "Each one checked against the university's own pages."],
@@ -129,15 +131,15 @@ export default function Home() {
             we show <span className="font-semibold text-forest-900">Unknown</span> instead of guessing.
           </p>
 
-          <dl className="mt-9 grid gap-4 sm:grid-cols-3">
+          <ul className="mt-9 grid gap-4 sm:grid-cols-3">
             {stats.map(([value, label, detail]) => (
-              <div key={label} className="rounded-3xl border border-forest-100 bg-white p-6">
-                <dt className="text-4xl font-semibold tracking-tight text-forest-900 tabular-nums">{value}</dt>
-                <p className="mt-1 font-semibold text-forest-700">{label}</p>
-                <dd className="mt-2 text-sm leading-6 text-muted">{detail}</dd>
-              </div>
+              <li key={label} className="rounded-3xl border border-forest-100 bg-white p-6">
+                <strong className="block text-4xl font-semibold tracking-tight text-forest-900 tabular-nums">{value}</strong>
+                <span className="mt-1 block font-semibold text-forest-700">{label}</span>
+                <p className="mt-2 text-sm leading-6 text-muted">{detail}</p>
+              </li>
             ))}
-          </dl>
+          </ul>
 
           <div className="mt-4 rounded-3xl border border-sand-300/70 bg-sand-100/60 px-6 py-5">
             <p className="font-semibold text-forest-900">Current limits, stated plainly</p>
@@ -155,9 +157,7 @@ export default function Home() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-5 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <Brand />
           <p className="text-sm leading-6 text-muted">
-            {coverage.verifiedOn
-              ? `Program data verified on ${coverage.verifiedOn}.`
-              : "Program data verified against official university sources."}{" "}
+            {verificationMessage}{" "}
             Built for the LOCUS Startup Hackathon 2026.
           </p>
         </div>
