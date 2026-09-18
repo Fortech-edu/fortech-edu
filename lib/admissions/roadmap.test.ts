@@ -44,7 +44,11 @@ test("a strong profile has no fake requirement gaps and still has useful actions
   assert.equal(items.some(({ type }) => type === "requirement"), false);
   assert.equal(hasStrongProfileState(items), true);
   assert.equal(items.some(({ id }) => id.endsWith(":verify-documents")), true);
+  assert.ok(items.length >= 6);
+  assert.equal(items.some(({ id, title }) => id.endsWith(":prepare-documents") && title.includes(program.programName)), true);
+  assert.equal(items.some(({ id, officialSourceUrl }) => id.endsWith(":verify-documents") && officialSourceUrl === program.sources.find(({ type }) => type === "admissions")!.url), true);
   assert.equal(items.some(({ id }) => id.endsWith(":review-application")), true);
+  assert.equal(items.some(({ id }) => id.endsWith(":finalize-application")), true);
   assert.equal(items.some(({ id }) => id.endsWith(":submit-application")), true);
 });
 
@@ -148,11 +152,30 @@ test("known and unknown deadlines remain distinct Apply actions", () => {
   assert.match(unknown!.description, /No verified deadline/);
 });
 
-test("document checks do not claim motivation letters or references are required", () => {
-  const item = generateRoadmap(profile, productionById("lut-software-systems-engineering")).find(({ id }) => id.endsWith(":verify-documents"));
+test("unknown document requirements stay source-backed verification work", () => {
+  const program = productionById("lut-software-systems-engineering");
+  const items = generateRoadmap(profile, program);
+  const item = items.find(({ id }) => id.endsWith(":verify-documents"));
   assert.ok(item);
-  assert.match(item.description, /Confirm whether.*motivation letter or references are requested/);
-  assert.doesNotMatch(item.description, /motivation letter is required|references are required|recommendation letters are required/i);
+  assert.equal(item.officialSourceUrl, program.sources.find(({ type }) => type === "admissions")!.url);
+  assert.match(item.description, /not yet verified/i);
+  assert.equal(items.some(({ id }) => /prepare-(motivation-letter|recommendations)$/.test(id)), false);
+});
+
+test("verified motivation and recommendation requirements create only their preparation tasks", () => {
+  const required = {
+    ...byId("northbridge-cs"),
+    applicationDocuments: { motivationLetter: true, recommendationLetters: true },
+  };
+  const none = {
+    ...required,
+    applicationDocuments: { motivationLetter: false, recommendationLetters: false },
+  };
+  const requiredItems = generateRoadmap(profile, required);
+  const noItems = generateRoadmap(profile, none);
+  assert.equal(requiredItems.some(({ id }) => id.endsWith(":prepare-motivation-letter")), true);
+  assert.equal(requiredItems.some(({ id }) => id.endsWith(":prepare-recommendations")), true);
+  assert.equal(noItems.some(({ id }) => /prepare-(motivation-letter|recommendations)$/.test(id)), false);
 });
 
 test("relevant official sources pass through unchanged", () => {
@@ -217,6 +240,7 @@ test("roadmap UI exposes identity, eligibility, phases, sources, and recovery st
   assert.ok(source.includes("Choose a program first"));
   assert.ok(source.includes("Selected program is no longer a current match"));
   assert.ok(source.includes("published comparable requirements we can verify"));
+  assert.doesNotMatch(source, /guaranteed admission|will be admitted/i);
   assert.equal(source.includes("aria-live"), false);
 });
 

@@ -27,6 +27,11 @@ export type Requirement = {
   notes: string | null;
 };
 
+export type ApplicationDocumentRequirements = {
+  motivationLetter: boolean | null;
+  recommendationLetters: boolean | null;
+};
+
 export type ProgramSource = {
   type: "program" | "admissions" | "tuition" | "deadline";
   title: string;
@@ -48,6 +53,8 @@ export type UniversityProgram = {
   academicRequirement: Requirement | null;
   ieltsRequirement: Requirement | null;
   satRequirement: Requirement | null;
+  /** Null or absent means the official document requirement is not yet verified. */
+  applicationDocuments?: ApplicationDocumentRequirements | null;
   deadline: string | null;
   sources: ProgramSource[];
   verificationDate: string | null;
