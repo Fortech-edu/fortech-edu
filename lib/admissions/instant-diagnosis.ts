@@ -9,6 +9,7 @@ import {
 } from "./presentation.ts";
 import { assessProgram } from "./recommend.ts";
 import { generateRoadmap } from "./roadmap.ts";
+import { isScoreValid } from "../onboarding.ts";
 
 export type InstantActionBasis =
   | "Confirmed gap"
@@ -127,5 +128,89 @@ export function buildInstantDiagnosis(
     comparisons,
     biggestGaps: comparisons.filter(({ status }) => status === "Action needed"),
     nextActions,
+  };
+}
+
+export type LiveComparison = ProfileProgramCriterion & {
+  isInvalid?: boolean;
+  validationError?: string;
+};
+
+export type LiveDiagnosisResult = {
+  diagnosis: Omit<InstantDiagnosis, "comparisons"> & {
+    comparisons: LiveComparison[];
+  };
+  hasInvalidScores: boolean;
+  fieldErrors: Partial<Record<"gpa" | "ieltsScore" | "satScore", string>>;
+};
+
+export function resolveLiveInstantDiagnosis(
+  profile: StudentProfile,
+  program: UniversityProgram,
+): LiveDiagnosisResult {
+  const gpaValid = isScoreValid("academic", profile.gpa);
+  const ieltsValid = isScoreValid("ielts", profile.ieltsScore);
+  const satValid = isScoreValid("sat", profile.satScore);
+
+  const fieldErrors: Partial<Record<"gpa" | "ieltsScore" | "satScore", string>> = {};
+  if (!gpaValid) fieldErrors.gpa = "Enter a GPA between 0 and 4.";
+  if (!ieltsValid) fieldErrors.ieltsScore = "Enter an IELTS score between 0 and 9.";
+  if (!satValid) fieldErrors.satScore = "Enter an SAT score between 400 and 1600.";
+
+  const hasInvalidScores = Boolean(fieldErrors.gpa || fieldErrors.ieltsScore || fieldErrors.satScore);
+
+  // Sanitize profile so invalid score inputs are never passed into deterministic calculations
+  const sanitizedProfile: StudentProfile = {
+    ...profile,
+    gpa: gpaValid ? profile.gpa : null,
+    ieltsScore: ieltsValid ? profile.ieltsScore : null,
+    satScore: satValid ? profile.satScore : null,
+  };
+
+  const baseDiagnosis = buildInstantDiagnosis(sanitizedProfile, program);
+
+  // Neutralize affected comparison rows for invalid scores so they never show Match or false gaps
+  const comparisons: LiveComparison[] = baseDiagnosis.comparisons.map((c) => {
+    if (c.key === "academic" && !gpaValid) {
+      return {
+        ...c,
+        profileValue: `Invalid input (${profile.gpa})`,
+        status: "Needs verification" as const,
+        detail: "Enter a GPA between 0 and 4 to check this requirement.",
+        isInvalid: true,
+        validationError: fieldErrors.gpa,
+      };
+    }
+    if (c.key === "ielts" && !ieltsValid) {
+      return {
+        ...c,
+        profileValue: `Invalid input (${profile.ieltsScore})`,
+        status: "Needs verification" as const,
+        detail: "Enter an IELTS score between 0 and 9 to check this requirement.",
+        isInvalid: true,
+        validationError: fieldErrors.ieltsScore,
+      };
+    }
+    if (c.key === "sat" && !satValid) {
+      return {
+        ...c,
+        profileValue: `Invalid input (${profile.satScore})`,
+        status: "Needs verification" as const,
+        detail: "Enter an SAT score between 400 and 1600 to check this requirement.",
+        isInvalid: true,
+        validationError: fieldErrors.satScore,
+      };
+    }
+    return c;
+  });
+
+  return {
+    diagnosis: {
+      ...baseDiagnosis,
+      comparisons,
+      biggestGaps: comparisons.filter((c) => c.status === "Action needed" && !c.isInvalid),
+    },
+    hasInvalidScores,
+    fieldErrors,
   };
 }

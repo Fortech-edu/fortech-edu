@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getProgramById, programs } from "../../data/programs.ts";
-import { buildInstantDiagnosis } from "../../lib/admissions/instant-diagnosis.ts";
+import { resolveLiveInstantDiagnosis } from "../../lib/admissions/instant-diagnosis.ts";
 import {
   buildTargetRequirementFacts,
   formatTuition,
@@ -15,7 +15,6 @@ import {
   createLandingInstantProfile,
   emptyProfile,
   numberOrNull,
-  stepErrors,
 } from "../../lib/onboarding.ts";
 import { useClientReady } from "../../lib/storage/client-ready.ts";
 import {
@@ -94,26 +93,19 @@ function InstantAdmissionCheckContent({
   const [gpa, setGpa] = useState<number | null>(initialProfile?.profile.gpa ?? null);
   const [ieltsScore, setIeltsScore] = useState<number | null>(initialProfile?.profile.ieltsScore ?? null);
   const [satScore, setSatScore] = useState<number | null>(initialProfile?.profile.satScore ?? null);
-  const [errors, setErrors] = useState<Partial<Record<"gpa" | "ieltsScore" | "satScore", string>>>({});
   const [completedDismissed, setCompletedDismissed] = useState(false);
 
   const availablePrograms = programs.filter((p) => p.universityName === university);
   const selectedProgram = getProgramById(programId || null);
 
-  // Synchronize target selection: only clean or partial profiles persist on change
+  // Target selection remains local draft state until explicit commit via "Build my full plan"
   function handleUniversityChange(name: string) {
     setUniversity(name);
     setProgramId("");
-    if (!stored?.completed) {
-      saveSelectedProgram(null);
-    }
   }
 
   function handleProgramChange(id: string) {
     setProgramId(id);
-    if (!stored?.completed) {
-      saveSelectedProgram(id || null);
-    }
   }
 
   function selectDemoProgram(id: string) {
@@ -121,12 +113,9 @@ function InstantAdmissionCheckContent({
     if (!prog) return;
     setUniversity(prog.universityName);
     setProgramId(prog.id);
-    if (!stored?.completed) {
-      saveSelectedProgram(prog.id);
-    }
   }
 
-  // Candidate profile for live deterministic comparison
+  // Candidate profile for live comparison
   const candidateProfile: StudentProfile = {
     ...(stored?.profile ?? emptyProfile),
     currentStudyStage,
@@ -135,8 +124,11 @@ function InstantAdmissionCheckContent({
     satScore,
   };
 
-  // Deterministic Instant Diagnosis (zero AI calls)
-  const diagnosis = selectedProgram ? buildInstantDiagnosis(candidateProfile, selectedProgram) : null;
+  // Live deterministic diagnosis with real-time score-range validation
+  const liveResult = selectedProgram ? resolveLiveInstantDiagnosis(candidateProfile, selectedProgram) : null;
+  const diagnosis = liveResult?.diagnosis ?? null;
+  const fieldErrors = liveResult?.fieldErrors ?? {};
+  const hasInvalidScores = liveResult?.hasInvalidScores ?? false;
   const requirementFacts = selectedProgram ? buildTargetRequirementFacts(selectedProgram) : [];
   const unresolvedCount = diagnosis
     ? diagnosis.comparisons.filter(({ status }) => status === "Needs verification" || status === "Not comparable").length
@@ -144,23 +136,9 @@ function InstantAdmissionCheckContent({
 
   function handleContinue(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedProgram) return;
+    if (!selectedProgram || hasInvalidScores) return;
 
-    // Validate score ranges
-    const validationErrors = stepErrors(2, candidateProfile);
-    const relevantErrors: Partial<Record<"gpa" | "ieltsScore" | "satScore", string>> = {};
-    if (validationErrors.gpa) relevantErrors.gpa = validationErrors.gpa;
-    if (validationErrors.ieltsScore) relevantErrors.ieltsScore = validationErrors.ieltsScore;
-    if (validationErrors.satScore) relevantErrors.satScore = validationErrors.satScore;
-
-    if (Object.keys(relevantErrors).length > 0) {
-      setErrors(relevantErrors);
-      return;
-    }
-
-    setErrors({});
-
-    // Persist selected target and transfer scores into profile
+    // Persist selected target and transfer scores into profile together
     const profileWithDefaults = createLandingInstantProfile(
       selectedProgram,
       {
@@ -170,6 +148,7 @@ function InstantAdmissionCheckContent({
         satScore,
       },
       stored?.profile,
+      initialProgram,
     );
 
     saveSelectedProgram(selectedProgram.id);
@@ -340,6 +319,21 @@ function InstantAdmissionCheckContent({
                 </div>
                 <dd className="mt-1 font-medium text-ink truncate">{formatTuition(selectedProgram)}</dd>
               </div>
+              <div className="rounded-lg border border-forest-100 bg-white p-2.5 text-xs">
+                <div className="flex items-center justify-between gap-1">
+                  <dt className="font-semibold text-forest-900">Deadline</dt>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      diagnosis.timeline.deadline.status === "Published"
+                        ? "bg-forest-100 text-forest-700"
+                        : "bg-slate-100 text-slate-700"
+                    }`}
+                  >
+                    {diagnosis.timeline.deadline.status}
+                  </span>
+                </div>
+                <dd className="mt-1 font-medium text-ink truncate">{diagnosis.timeline.deadline.value}</dd>
+              </div>
             </dl>
 
             {selectedProgram.sources.length > 0 && (
@@ -398,14 +392,17 @@ function InstantAdmissionCheckContent({
                   max="4"
                   step="0.01"
                   placeholder="e.g. 3.5"
-                  className={inputClass}
+                  className={`${inputClass} ${fieldErrors.gpa ? "border-red-500 focus:border-red-600" : ""}`}
                   value={gpa ?? ""}
-                  onChange={(e) => {
-                    setGpa(numberOrNull(e.target.value));
-                    setErrors((prev) => ({ ...prev, gpa: undefined }));
-                  }}
+                  onChange={(e) => setGpa(numberOrNull(e.target.value))}
+                  aria-invalid={Boolean(fieldErrors.gpa)}
+                  aria-describedby={fieldErrors.gpa ? `${formId}-gpa-error` : undefined}
                 />
-                {errors.gpa && <p className="mt-1 text-xs text-red-600">{errors.gpa}</p>}
+                {fieldErrors.gpa && (
+                  <p id={`${formId}-gpa-error`} className="mt-1 text-xs font-medium text-red-600" role="alert">
+                    {fieldErrors.gpa}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -419,14 +416,17 @@ function InstantAdmissionCheckContent({
                   max="9"
                   step="0.5"
                   placeholder="e.g. 6.0"
-                  className={inputClass}
+                  className={`${inputClass} ${fieldErrors.ieltsScore ? "border-red-500 focus:border-red-600" : ""}`}
                   value={ieltsScore ?? ""}
-                  onChange={(e) => {
-                    setIeltsScore(numberOrNull(e.target.value));
-                    setErrors((prev) => ({ ...prev, ieltsScore: undefined }));
-                  }}
+                  onChange={(e) => setIeltsScore(numberOrNull(e.target.value))}
+                  aria-invalid={Boolean(fieldErrors.ieltsScore)}
+                  aria-describedby={fieldErrors.ieltsScore ? `${formId}-ielts-error` : undefined}
                 />
-                {errors.ieltsScore && <p className="mt-1 text-xs text-red-600">{errors.ieltsScore}</p>}
+                {fieldErrors.ieltsScore && (
+                  <p id={`${formId}-ielts-error`} className="mt-1 text-xs font-medium text-red-600" role="alert">
+                    {fieldErrors.ieltsScore}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -440,14 +440,17 @@ function InstantAdmissionCheckContent({
                   max="1600"
                   step="10"
                   placeholder="e.g. 1200"
-                  className={inputClass}
+                  className={`${inputClass} ${fieldErrors.satScore ? "border-red-500 focus:border-red-600" : ""}`}
                   value={satScore ?? ""}
-                  onChange={(e) => {
-                    setSatScore(numberOrNull(e.target.value));
-                    setErrors((prev) => ({ ...prev, satScore: undefined }));
-                  }}
+                  onChange={(e) => setSatScore(numberOrNull(e.target.value))}
+                  aria-invalid={Boolean(fieldErrors.satScore)}
+                  aria-describedby={fieldErrors.satScore ? `${formId}-sat-error` : undefined}
                 />
-                {errors.satScore && <p className="mt-1 text-xs text-red-600">{errors.satScore}</p>}
+                {fieldErrors.satScore && (
+                  <p id={`${formId}-sat-error`} className="mt-1 text-xs font-medium text-red-600" role="alert">
+                    {fieldErrors.satScore}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -464,20 +467,37 @@ function InstantAdmissionCheckContent({
             {/* Criteria comparison rows */}
             <div className="space-y-2">
               {diagnosis.comparisons.map((row) => (
-                <div
-                  key={row.key}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-forest-100 bg-white p-3 text-xs"
-                >
-                  <div>
-                    <span className="font-semibold text-forest-900">{row.label}</span>
-                    <p className="mt-0.5 text-muted">
-                      Your value: <strong className="text-ink">{row.profileValue}</strong> · Required: <strong className="text-ink">{row.programValue}</strong>
-                    </p>
+                "isInvalid" in row && row.isInvalid ? (
+                  <div
+                    key={row.key}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50/60 p-3 text-xs"
+                  >
+                    <div>
+                      <span className="font-semibold text-red-900">{row.label}</span>
+                      <p className="mt-0.5 text-red-700 font-medium">
+                        {row.detail}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-800">
+                      Invalid input
+                    </span>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusStyles[row.status]}`}>
-                    {row.status}
-                  </span>
-                </div>
+                ) : (
+                  <div
+                    key={row.key}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-forest-100 bg-white p-3 text-xs"
+                  >
+                    <div>
+                      <span className="font-semibold text-forest-900">{row.label}</span>
+                      <p className="mt-0.5 text-muted">
+                        Your value: <strong className="text-ink">{row.profileValue}</strong> · Required: <strong className="text-ink">{row.programValue}</strong>
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${statusStyles[row.status]}`}>
+                      {row.status}
+                    </span>
+                  </div>
+                )
               ))}
             </div>
 
@@ -519,13 +539,24 @@ function InstantAdmissionCheckContent({
           <div className="border-t border-black/10 pt-5">
             <button
               type="submit"
-              className="landing-button flex min-h-12 w-full items-center justify-center rounded-full px-6 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-700"
+              disabled={hasInvalidScores}
+              className={`landing-button flex min-h-12 w-full items-center justify-center rounded-full px-6 text-sm font-semibold transition ${
+                hasInvalidScores
+                  ? "opacity-50 cursor-not-allowed"
+                  : "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-forest-700"
+              }`}
             >
               Build my full plan <span aria-hidden="true" className="landing-button-arrow ml-2 font-bold">↗</span>
             </button>
-            <p className="mt-2 text-center text-[11px] text-muted leading-4">
-              Your target, GPA, and test scores will be saved. You will continue directly into Missing Details without repeating questions.
-            </p>
+            {hasInvalidScores ? (
+              <p className="mt-2 text-center text-xs font-medium text-red-600">
+                Correct the invalid score inputs above to continue.
+              </p>
+            ) : (
+              <p className="mt-2 text-center text-[11px] text-muted leading-4">
+                Your target, GPA, and test scores will be saved. You will continue directly into Missing Details without repeating questions.
+              </p>
+            )}
           </div>
         </div>
       )}

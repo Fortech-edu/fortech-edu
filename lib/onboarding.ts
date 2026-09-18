@@ -163,6 +163,7 @@ export function createLandingInstantProfile(
     satScore: number | null;
   },
   existingProfile?: StudentProfile | null,
+  previousTarget?: UniversityProgram | null,
 ): StudentProfile {
   const base = existingProfile ?? emptyProfile;
   const profileWithScores: StudentProfile = {
@@ -172,5 +173,5 @@ export function createLandingInstantProfile(
     ieltsScore: currentState.ieltsScore,
     satScore: currentState.satScore,
   };
-  return applyTargetProfileDefaults(profileWithScores, program);
+  return applyTargetProfileDefaults(profileWithScores, program, previousTarget);
 }
