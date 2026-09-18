@@ -116,6 +116,17 @@ test("qualification-specific and unknown academic criteria stay verification wor
   assert.equal(hasStrongProfileState(generateRoadmap(profile, productionById("hkust-computer-science"))), false);
 });
 
+test("a numeric requirement on a non-GPA scale never becomes a GPA improvement task", () => {
+  const program: UniversityProgram = {
+    ...byId("northbridge-cs"),
+    academicRequirement: { label: "UNT", minimumScore: 70, isRequired: true, notes: null },
+  };
+  const items = generateRoadmap({ ...profile, gpa: 3.4 }, program);
+
+  assert.equal(items.some(({ id }) => id.endsWith(":improve-academics")), false);
+  assert.equal(items.some(({ id }) => id.endsWith(":verify-academic")), true);
+});
+
 test("same-currency tuition within budget creates no budget task", () => {
   const program = { ...byId("northbridge-cs"), tuition: 18000 };
   assert.equal(generateRoadmap(profile, program).some(({ id }) => /budget|tuition/.test(id)), false);
@@ -252,7 +263,7 @@ test("roadmap UI exposes identity, eligibility, phases, sources, and recovery st
   assert.ok(source.includes('type="checkbox"'));
   assert.ok(source.includes("Build your profile first"));
   assert.ok(source.includes("Choose a program first"));
-  assert.ok(source.includes("Selected program is no longer a current match"));
+  assert.ok(source.includes("Selected program is no longer available"));
   assert.ok(source.includes("published comparable requirements we can verify"));
   assert.doesNotMatch(source, /guaranteed admission|will be admitted/i);
   assert.equal(source.includes("aria-live"), false);

@@ -106,22 +106,18 @@ export function generateRoadmap(
   const activities = profile.activitiesAndAchievements?.trim();
   const criteria = new Map(buildProfileProgramCriteria(profile, assessProgram(profile, program)).map((criterion) => [criterion.key, criterion]));
   const admissionsSource = sourceFor(program, "admissions", "program");
+  const academicCriterion = criteria.get("academic")!;
 
-  if (
-    academic?.isRequired === true &&
-    academic.minimumScore !== null &&
-    profile.gpa !== null &&
-    profile.gpa < academic.minimumScore
-  ) {
+  if (academicCriterion.status === "Action needed" && academic?.minimumScore !== null && academic?.minimumScore !== undefined && profile.gpa !== null) {
     items.push(task(program, "improve-academics", "Address the published academic requirement gap", `Your current GPA is ${profile.gpa}; ${program.programName} publishes a minimum of ${academic.minimumScore}.`, "now", "requirement", admissionsSource));
-  } else if (academic?.isRequired === true && academic.minimumScore !== null && profile.gpa === null) {
+  } else if (academicCriterion.status === "Needs verification" && academic?.isRequired === true && academic.minimumScore !== null && profile.gpa === null) {
     items.push(task(program, "verify-academic-score", "Confirm your current GPA", `Record or verify your GPA against the published minimum of ${academic.minimumScore}.`, "now", "requirement", admissionsSource));
   }
 
   items.push(...scoreTasks(profile, program, "ielts", program.ieltsRequirement));
   items.push(...scoreTasks(profile, program, "sat", program.satRequirement));
 
-  if (isUnknown(academic)) {
+  if (isUnknown(academic) || academicCriterion.status === "Not comparable") {
     items.push(task(
       program,
       "verify-academic",
