@@ -64,6 +64,8 @@ export function inferFieldFromTarget(field: string | null | undefined): string |
     "software engineering",
     "data science",
     "information technology",
+    "artificial intelligence",
+    "cybersecurity",
   ];
   const businessFields = [
     "business",
@@ -71,6 +73,7 @@ export function inferFieldFromTarget(field: string | null | undefined): string |
     "international business",
     "finance",
     "business analytics",
+    "economics",
   ];
 
   if (csFields.includes(normalized)) return "Computer Science";

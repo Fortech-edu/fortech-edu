@@ -15,8 +15,22 @@ const weights = {
 } as const;
 
 const relatedFieldGroups: readonly (readonly string[])[] = [
-  ["computer science", "software engineering", "data science", "information technology"],
-  ["business", "business administration", "international business", "finance", "business analytics"],
+  [
+    "computer science",
+    "software engineering",
+    "data science",
+    "information technology",
+    "artificial intelligence",
+    "cybersecurity",
+  ],
+  [
+    "business",
+    "business administration",
+    "international business",
+    "finance",
+    "business analytics",
+    "economics",
+  ],
 ];
 
 const round = (value: number) => Math.round(value * 10) / 10;
