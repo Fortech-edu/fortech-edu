@@ -93,7 +93,7 @@ export function DiagnosisView() {
           <p className="text-xs font-semibold uppercase tracking-[0.15em] text-forest-600">Priorities</p>
           <h2 id="focus-next-title" className="mt-2 text-2xl font-semibold tracking-tight text-forest-900">Focus next</h2>
           <p className="mt-2 leading-7 text-ink/80">The shortest list of profile-level actions worth your attention now.</p>
-          <AnalysisItems items={diagnosis.gaps.slice(0, 3)} marker="→" empty="No profile-level actions are currently listed." />
+          <AnalysisItems items={diagnosis.gaps.slice(0, 3)} marker="→" empty="No profile-level gaps are currently listed." />
         </section>
       </div>
 
