@@ -28,7 +28,7 @@ export type ChangedProfileInput =
       nextCurrency: string | null;
     }
   | {
-      input: "ieltsScore" | "satScore";
+      input: "gpa" | "ieltsScore" | "satScore";
       previousValue: number | null;
       nextValue: number | null;
     }
@@ -118,7 +118,21 @@ export type NextActionChange = {
   nextTitle: string | null;
 };
 
+export type TargetChangeRecord = {
+  previousProgramId: string;
+  nextProgramId: string;
+  previousName: string;
+  nextName: string;
+};
+
 export type TargetPlanChange = {
+  /**
+   * Present only when the selected target changed between the baseline and the
+   * saved profile. Criterion/roadmap/Next Action diffs stay empty in that case:
+   * the previous plan was built for a different target, so a cross-target
+   * before/after comparison would be fabricated.
+   */
+  targetChange?: TargetChangeRecord;
   criterionChanges: TargetCriterionChange[];
   roadmapTaskChanges: RoadmapTaskChange[];
   nextActionChange: NextActionChange | null;
@@ -235,7 +249,7 @@ function changedInputs(
     changes.push({ input: "preferredCountries", ...countryChanges });
   }
 
-  for (const input of ["ieltsScore", "satScore"] as const) {
+  for (const input of ["gpa", "ieltsScore", "satScore"] as const) {
     if (previousProfile[input] !== nextProfile[input]) {
       changes.push({
         input,
@@ -510,15 +524,41 @@ export function buildTargetPlanImpact(
 }
 
 /**
+ * Truthful record for a selected-target change. The previous plan was built
+ * against a different program, so no criterion/roadmap/Next Action
+ * before-vs-after claims are made — only the identity change is reported.
+ * Recommendation-level consequences remain available through programChanges.
+ */
+export function buildTargetChangeImpact(
+  previousTarget: UniversityProgram,
+  nextTarget: UniversityProgram,
+): TargetPlanChange {
+  const displayName = (program: UniversityProgram) =>
+    `${program.programName} @ ${program.universityName}`;
+  return {
+    targetChange: {
+      previousProgramId: previousTarget.id,
+      nextProgramId: nextTarget.id,
+      previousName: displayName(previousTarget),
+      nextName: displayName(nextTarget),
+    },
+    criterionChanges: [],
+    roadmapTaskChanges: [],
+    nextActionChange: null,
+  };
+}
+
+/**
  * A profile edit is a meaningful Change Impact when at least one deterministic
  * consequence exists: recommendation movement, a target requirement state
- * change, a roadmap task change, or a Next Action change. A changed input with
- * no downstream effect is not shown as impact.
+ * change, a roadmap task change, a Next Action change, or a selected-target
+ * change. A changed input with no downstream effect is not shown as impact.
  */
 export function hasMeaningfulImpact(impact: ChangeImpact): boolean {
   if (impact.programChanges.length > 0) return true;
   const targetPlan = impact.targetPlan;
   if (!targetPlan) return false;
+  if (targetPlan.targetChange) return true;
   return (
     targetPlan.criterionChanges.length > 0 ||
     targetPlan.roadmapTaskChanges.length > 0 ||

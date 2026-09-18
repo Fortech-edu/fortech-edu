@@ -8,7 +8,7 @@ import type {
   StudentProfile,
   UniversityProgram,
 } from "../../types/admissions.ts";
-import { buildChangeImpact, buildTargetPlanImpact, hasMeaningfulImpact } from "./change-impact.ts";
+import { buildChangeImpact, buildTargetChangeImpact, buildTargetPlanImpact, hasMeaningfulImpact } from "./change-impact.ts";
 import { recommendPrograms } from "./recommend.ts";
 
 const profile: StudentProfile = {
@@ -547,4 +547,67 @@ test("a real verified target shows the same deterministic IELTS transition", () 
     plan.roadmapTaskChanges.some((change) => change.change === "removed" && change.taskId === "utwente-technical-computer-science:prepare-ielts"),
     true,
   );
+});
+
+test("a target change records the identity change without fabricating cross-target diffs", () => {
+  const previousTarget = demoPrograms.find(({ id }) => id === "northbridge-cs")!;
+  const nextTarget = demoPrograms.find(({ id }) => id === "horizon-business")!;
+  const plan = buildTargetChangeImpact(previousTarget, nextTarget);
+
+  assert.deepEqual(plan.criterionChanges, []);
+  assert.deepEqual(plan.roadmapTaskChanges, []);
+  assert.equal(plan.nextActionChange, null);
+  assert.deepEqual(plan.targetChange, {
+    previousProgramId: "northbridge-cs",
+    nextProgramId: "horizon-business",
+    previousName: "BSc Computer Science @ Northbridge Institute",
+    nextName: "BBA Business Administration @ Horizon Business School",
+  });
+
+  const impact = buildChangeImpact(profile, profile, [], []);
+  assert.equal(hasMeaningfulImpact({ ...impact, targetPlan: plan }), true);
+});
+
+test("same-target comparisons never carry a target-change record", () => {
+  const plan = buildTargetPlanImpact({ ...profile, ieltsScore: 6 }, { ...profile, ieltsScore: 7 }, targetProgram);
+  assert.equal(plan.targetChange, undefined);
+  assert.ok(plan.criterionChanges.length > 0);
+});
+
+test("a GPA change reaches changed inputs and produces truthful plan impact", () => {
+  // northbridge-cs publishes a directly comparable GPA minimum of 3.2.
+  const before = { ...profile, gpa: 2.8, ieltsScore: 7 };
+  const after = { ...profile, gpa: 3.5, ieltsScore: 7 };
+
+  const unchangedRecommendations = recommendPrograms(before, demoPrograms);
+  const impact = buildChangeImpact(before, after, unchangedRecommendations, unchangedRecommendations);
+  assert.deepEqual(impact.programChanges, []);
+  assert.ok(
+    impact.changedInputs.some(
+      (change) => change.input === "gpa" && change.previousValue === 2.8 && change.nextValue === 3.5,
+    ),
+  );
+
+  const plan = buildTargetPlanImpact(before, after, targetProgram);
+  assert.deepEqual(
+    plan.criterionChanges.map(({ key, previousStatus, nextStatus }) => ({ key, previousStatus, nextStatus })),
+    [{ key: "academic", previousStatus: "Action needed", nextStatus: "Match" }],
+  );
+  assert.ok(
+    plan.roadmapTaskChanges.some((change) => change.change === "removed" && change.taskId === "northbridge-cs:improve-academics"),
+  );
+  assert.deepEqual(plan.nextActionChange, {
+    previousTitle: "Address the published academic requirement gap",
+    nextTitle: "Confirm the required application documents",
+  });
+
+  assert.equal(hasMeaningfulImpact({ ...impact, targetPlan: plan }), true);
+});
+
+test("an unknown-to-known GPA keeps the previous value neutral in changed inputs", () => {
+  const impact = buildChangeImpact({ ...profile, gpa: null }, { ...profile, gpa: 3.4 }, [], []);
+  const gpa = impact.changedInputs.find((change) => change.input === "gpa");
+  assert.ok(gpa);
+  assert.equal(gpa.input === "gpa" ? gpa.previousValue : "", null);
+  assert.equal(gpa.input === "gpa" ? gpa.nextValue : "", 3.4);
 });

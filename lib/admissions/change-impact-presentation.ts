@@ -30,6 +30,7 @@ export function presentChangedInput(change: ChangedProfileInput) {
   const labels = {
     intendedField: "Intended field",
     targetDegree: "Degree",
+    gpa: "GPA",
     ieltsScore: "IELTS",
     satScore: "SAT",
   } as const;

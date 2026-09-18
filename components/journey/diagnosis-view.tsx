@@ -91,12 +91,14 @@ function RecentImpactPanel({ impact }: { impact: ChangeImpact }) {
   if (dismissed) return null;
 
   const targetPlan = impact.targetPlan;
+  const targetChange = targetPlan?.targetChange ?? null;
   const inputChanges = impact.changedInputs.slice(0, 3).map(presentChangedInput);
   const criterionChanges = (targetPlan?.criterionChanges ?? []).slice(0, 3);
   const roadmapChanges = (targetPlan?.roadmapTaskChanges ?? []).slice(0, 2);
   const nextActionChange = targetPlan?.nextActionChange ?? null;
   const matchCounts = impactCounts(impact);
   const hasContent =
+    targetChange !== null ||
     inputChanges.length > 0 ||
     criterionChanges.length > 0 ||
     roadmapChanges.length > 0 ||
@@ -123,6 +125,12 @@ function RecentImpactPanel({ impact }: { impact: ChangeImpact }) {
           Dismiss
         </button>
       </div>
+
+      {targetChange ? (
+        <p className="mt-5 text-sm font-semibold leading-6 text-forest-900">
+          Target changed: {targetChange.previousName} <span aria-hidden="true">→</span> {targetChange.nextName}
+        </p>
+      ) : null}
 
       {inputChanges.length ? (
         <div className="mt-5 flex flex-wrap gap-2">

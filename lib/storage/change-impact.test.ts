@@ -9,6 +9,7 @@ import {
   clearRecentChangeImpact,
   loadEditBaseline,
   loadRecentChangeImpact,
+  parseEditBaseline,
   parseRecentChangeImpact,
   saveEditBaseline,
   saveRecentChangeImpact,
@@ -64,10 +65,29 @@ test("first-time reset clears stale edit context", () => {
 test("edit baseline and recent impact survive navigation in the same session", () => {
   const storage = new MemoryStorage();
   assert.equal(saveEditBaseline(profile, storage), true);
-  assert.deepEqual(loadEditBaseline(storage), profile);
+  assert.deepEqual(loadEditBaseline(storage), { profile, selectedProgramId: null });
   assert.equal(saveRecentChangeImpact(impact, storage, 1000), true);
   assert.deepEqual(loadRecentChangeImpact(storage, 1001), impact);
   assert.deepEqual(loadRecentChangeImpact(storage, 1002), impact);
+});
+
+test("the edit baseline records the target active when the edit began", () => {
+  const storage = new MemoryStorage();
+  assert.equal(saveEditBaseline(profile, storage, "northbridge-cs"), true);
+  assert.deepEqual(loadEditBaseline(storage), { profile, selectedProgramId: "northbridge-cs" });
+
+  assert.equal(saveEditBaseline(profile, storage, null), true);
+  assert.deepEqual(loadEditBaseline(storage), { profile, selectedProgramId: null });
+});
+
+test("a legacy baseline containing only a profile still parses safely", () => {
+  const storage = new MemoryStorage();
+  storage.setItem("admission-journey:v1:edit-baseline", JSON.stringify(profile));
+  assert.deepEqual(loadEditBaseline(storage), { profile, selectedProgramId: null });
+
+  assert.equal(parseEditBaseline('{"version":1,"profile":{}}'), null);
+  assert.equal(parseEditBaseline('{"version":1,"profile":null,"selectedProgramId":"p"}'), null);
+  assert.equal(parseEditBaseline('{"version":2,"profile":{}}'), null);
 });
 
 test("a restored completed profile remains the edit baseline", () => {
@@ -81,8 +101,11 @@ test("a restored completed profile remains the edit baseline", () => {
   }));
 
   assert.equal(restored?.flowStage, "onboarding");
-  assert.equal(saveEditBaseline(restored!.profile, storage), true);
-  assert.deepEqual(loadEditBaseline(storage), restored!.profile);
+  assert.equal(saveEditBaseline(restored!.profile, storage, "utwente-technical-computer-science"), true);
+  assert.deepEqual(loadEditBaseline(storage), {
+    profile: restored!.profile,
+    selectedProgramId: "utwente-technical-computer-science",
+  });
 });
 
 test("empty impact remains valid but contains no recommendation changes", () => {
@@ -162,4 +185,39 @@ test("a malformed target plan fails safely instead of crashing consumers", () =>
   storage.setItem(RECENT_IMPACT_STORAGE_KEY, malformed);
   assert.equal(loadRecentChangeImpact(storage, 1001), null);
   assert.equal(storage.getItem(RECENT_IMPACT_STORAGE_KEY), null);
+});
+
+test("an unknown criterion key in a stored target plan fails safely", () => {
+  const stale = JSON.stringify({
+    version: 1,
+    savedAt: 1000,
+    impact: {
+      ...impact,
+      targetPlan: {
+        criterionChanges: [
+          { key: "something-random", label: "Mystery", previousStatus: "Match", nextStatus: "Action needed", previousValue: "a", nextValue: "b" },
+        ],
+        roadmapTaskChanges: [],
+        nextActionChange: null,
+      },
+    },
+  });
+
+  assert.equal(parseRecentChangeImpact(stale, 1001), null);
+
+  const storage = new MemoryStorage();
+  storage.setItem(RECENT_IMPACT_STORAGE_KEY, stale);
+  assert.equal(loadRecentChangeImpact(storage, 1001), null);
+  assert.equal(storage.getItem(RECENT_IMPACT_STORAGE_KEY), null);
+});
+
+test("a gpa changed input survives recent-impact storage", () => {
+  const storage = new MemoryStorage();
+  const withGpa: ChangeImpact = {
+    changedInputs: [{ input: "gpa", previousValue: 2.8, nextValue: 3.4 }],
+    programChanges: [],
+    summary: { entered: 0, removed: 0, movedUp: 0, movedDown: 0, eligibilityChanged: 0 },
+  };
+  saveRecentChangeImpact(withGpa, storage, 1000);
+  assert.deepEqual(loadRecentChangeImpact(storage, 1001), withGpa);
 });
