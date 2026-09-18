@@ -6,6 +6,7 @@ import { getProgramById, programs } from "../../data/programs.ts";
 import { buildChangeImpact } from "../../lib/admissions/change-impact.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import {
+  applyTargetProfileDefaults,
   emptyProfile,
   numberOrNull,
   stepErrors,
@@ -203,7 +204,10 @@ export function OnboardingForm() {
 
 function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile | null; initialTarget: UniversityProgram | null }) {
   const router = useRouter();
-  const [profile, setProfile] = useState<StudentProfile>(initial?.profile ?? emptyProfile);
+  const [profile, setProfile] = useState<StudentProfile>(() => {
+    if (initial) return initial.profile;
+    return initialTarget ? applyTargetProfileDefaults(emptyProfile, initialTarget) : emptyProfile;
+  });
   const [instantProfile, setInstantProfile] = useState<StudentProfile>({
     ...emptyProfile,
     currentStudyStage: initial?.profile.currentStudyStage ?? null,
@@ -212,9 +216,11 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
     satScore: initial?.profile.satScore ?? null,
   });
   const [target, setTarget] = useState<UniversityProgram | null>(initialTarget);
+  const lastTargetRef = useRef<UniversityProgram | null>(initialTarget);
   const [entryStage, setEntryStage] = useState<OnboardingFlowStage>(initial?.flowStage ?? "target");
   const [step, setStep] = useState(initial?.step ?? 1);
   const [completed, setCompleted] = useState(initial?.completed ?? false);
+  const [editingFromReview, setEditingFromReview] = useState(false);
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
   const [attemptedTarget, setAttemptedTarget] = useState(false);
   const mounted = useRef(false);
@@ -248,11 +254,79 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
   function edit(stepNumber: number) {
     setCompleted(false);
     setAttemptedStep(null);
+    setEditingFromReview(true);
+    setEntryStage("onboarding");
     setStep(stepNumber);
+  }
+
+  const isTargetJourney = entryStage !== "onboarding" || Boolean(target);
+
+  function handleBack() {
+    setCompleted(false);
+    setAttemptedStep(null);
+    if (editingFromReview) {
+      setEditingFromReview(false);
+      setEntryStage("onboarding");
+      setStep(4);
+      return;
+    }
+    if (entryStage === "current") {
+      setEntryStage("target");
+    } else if (entryStage === "diagnosis") {
+      setEntryStage("current");
+    } else if (entryStage === "onboarding") {
+      if (step === 4) {
+        setStep(3);
+      } else if (step === 3) {
+        if (isTargetJourney) {
+          setEntryStage("diagnosis");
+        } else {
+          setStep(2);
+        }
+      } else if (step === 2) {
+        setStep(1);
+      } else if (step === 1) {
+        if (isTargetJourney) {
+          setEntryStage("diagnosis");
+        }
+      }
+    }
   }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (editingFromReview) {
+      if (entryStage === "target") {
+        if (!target) {
+          setAttemptedTarget(true);
+          return;
+        }
+        setAttemptedTarget(false);
+        setEntryStage("onboarding");
+        setStep(4);
+        setEditingFromReview(false);
+        return;
+      }
+      if (entryStage === "current") {
+        if (!validStep(2, instantProfile)) return;
+        const transferred = transferInstantProfile(profile, instantProfile);
+        setProfile(transferred);
+        setEntryStage("onboarding");
+        setStep(4);
+        setEditingFromReview(false);
+        return;
+      }
+      if (!validStep(step, profile)) {
+        setAttemptedStep(step);
+        return;
+      }
+      setAttemptedStep(null);
+      setEditingFromReview(false);
+      setStep(4);
+      return;
+    }
+
     if (entryStage === "target") {
       if (!target) {
         setAttemptedTarget(true);
@@ -268,8 +342,11 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
       return;
     }
     if (entryStage === "diagnosis") {
-      setProfile((current) => transferInstantProfile(current, instantProfile));
+      const transferred = transferInstantProfile(profile, instantProfile);
+      const withDefaults = applyTargetProfileDefaults(transferred, target, lastTargetRef.current);
+      setProfile(withDefaults);
       setEntryStage("onboarding");
+      setStep(3);
       return;
     }
     if (!validStep(step, profile)) {
@@ -308,11 +385,47 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
       ? ["Where are you today?", "Add only the current values you know. You can see a useful comparison without completing the full profile."]
       : entryStage === "diagnosis"
         ? ["Instant Diagnosis", "See what is ready, what is confirmed, what remains unknown, and what to do next."]
-        : stepDetails[step - 1];
-  const flowLabels = entryStage === "onboarding"
-    ? ["Profile", "Academics", "Preferences", "Review"]
-    : ["Target", "Current state", "Diagnosis"];
-  const flowStep = entryStage === "target" ? 1 : entryStage === "current" ? 2 : entryStage === "diagnosis" ? 3 : step;
+        : isTargetJourney && step === 3
+          ? ["Complete missing details", "Add your target intake, budget, and study preferences to finalize your admission profile."]
+          : stepDetails[step - 1];
+
+  const flowLabels = isTargetJourney
+    ? ["Target", "Current state", "Instant diagnosis", "Missing details", "Review"]
+    : ["Profile", "Academics", "Preferences", "Review"];
+
+  const flowStep = !isTargetJourney
+    ? step
+    : entryStage === "target"
+      ? 1
+      : entryStage === "current"
+        ? 2
+        : entryStage === "diagnosis"
+          ? 3
+          : step === 4
+            ? 5
+            : step === 3
+              ? 4
+              : step;
+
+  const submitLabel = editingFromReview
+    ? "Save and return to review"
+    : entryStage === "target"
+      ? "Continue to current state"
+      : entryStage === "current"
+        ? "Show instant diagnosis"
+        : entryStage === "diagnosis"
+          ? "Build my full plan"
+          : step === 3
+            ? "Continue to review"
+            : step === 4
+              ? "Analyze my profile"
+              : "Continue";
+
+  const backLabel = editingFromReview ? "Back to review" : "Back";
+  const backDisabled =
+    !editingFromReview &&
+    (entryStage === "target" || (!isTargetJourney && step === 1));
+
   const errors = stepErrors(step, profile);
   const instantErrors = stepErrors(2, instantProfile);
   const showRequiredErrors = attemptedStep === step;
@@ -357,13 +470,45 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
 
         <section className="onboarding-panel overflow-hidden">
           <header className="border-b border-forest-100 px-5 py-6 sm:px-8 sm:py-8">
-            <p className="hidden text-xs font-semibold uppercase tracking-[0.16em] text-forest-600 lg:block">Step {String(flowStep).padStart(2, "0")} of 05</p>
+            <p className="hidden text-xs font-semibold uppercase tracking-[0.16em] text-forest-600 lg:block">Step {String(flowStep).padStart(2, "0")} of {String(flowLabels.length).padStart(2, "0")}</p>
             <h1 id="onboarding-step-heading" className="mt-3 text-3xl font-semibold leading-[0.95] text-forest-900 sm:text-5xl">{title}</h1>
             <p className="mt-2 max-w-2xl leading-7 text-muted">{description}</p>
           </header>
 
           <div key={entryStage === "onboarding" ? step : entryStage} className="onboarding-step-content space-y-0 bg-[var(--surface)] px-5 py-2 sm:px-8 sm:py-4">
-            {entryStage === "target" ? <TargetStep selected={target} attempted={attemptedTarget} onSelect={(program) => { setTarget(program); setAttemptedTarget(false); saveSelectedProgram(program?.id ?? null); }} /> : null}
+            {editingFromReview ? (
+              <div className="mb-4 flex items-center justify-between rounded-2xl border border-forest-200 bg-forest-50/80 px-4 py-2.5 text-sm text-forest-900">
+                <span className="font-medium">Editing section from review</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingFromReview(false);
+                    setEntryStage("onboarding");
+                    setStep(4);
+                  }}
+                  className="font-semibold text-forest-700 underline decoration-forest-300 underline-offset-4 hover:decoration-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
+                >
+                  Cancel & return to review
+                </button>
+              </div>
+            ) : null}
+
+            {entryStage === "target" ? (
+              <TargetStep
+                selected={target}
+                attempted={attemptedTarget}
+                onSelect={(program) => {
+                  const previous = lastTargetRef.current;
+                  setTarget(program);
+                  setAttemptedTarget(false);
+                  saveSelectedProgram(program?.id ?? null);
+                  if (program) {
+                    lastTargetRef.current = program;
+                    setProfile((current) => applyTargetProfileDefaults(current, program, previous));
+                  }
+                }}
+              />
+            ) : null}
 
             {entryStage === "current" ? <InstantCurrentState profile={instantProfile} errors={instantErrors} onUpdate={(key, value) => setInstantProfile((current) => ({ ...current, [key]: value }))} /> : null}
 
@@ -441,16 +586,60 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <input id="sat" className={inputClass} type="number" min="400" max="1600" step="10" inputMode="numeric" placeholder="1200" value={profile.satScore ?? ""} onChange={(event) => update("satScore", numberOrNull(event.target.value))} aria-describedby={`sat-help${errors.satScore ? " sat-error" : ""}`} aria-invalid={Boolean(errors.satScore)} />
                   <ErrorText id="sat-error">{errors.satScore}</ErrorText>
                 </FieldCard>
-                <FieldCard>
-                  <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
-                  <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
-                  <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
-                </FieldCard>
+                {!isTargetJourney ? (
+                  <FieldCard>
+                    <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
+                    <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
+                    <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
+                  </FieldCard>
+                ) : null}
               </>
             ) : null}
 
             {entryStage === "onboarding" && step === 3 ? (
               <>
+                {target ? (
+                  <div className="rounded-2xl border border-forest-200 bg-forest-50/60 p-4 text-forest-900">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-forest-700">
+                        Academic baseline & target recorded
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingFromReview(true);
+                          setEntryStage("onboarding");
+                          setStep(2);
+                        }}
+                        className="text-xs font-semibold text-forest-700 underline decoration-forest-300 underline-offset-4 hover:decoration-forest-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
+                      >
+                        Edit academics
+                      </button>
+                    </div>
+                    <p className="mt-1.5 font-semibold text-ink">
+                      {target.programName} @ {target.universityName}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                      <span>Stage: <strong className="font-semibold text-ink">{display(profile.currentStudyStage, "Not specified")}</strong></span>
+                      <span>GPA: <strong className="font-semibold text-ink">{display(profile.gpa, "Unknown")}</strong></span>
+                      <span>IELTS: <strong className="font-semibold text-ink">{display(profile.ieltsScore, "Unknown")}</strong></span>
+                      <span>SAT: <strong className="font-semibold text-ink">{display(profile.satScore, "Unknown")}</strong></span>
+                    </div>
+                  </div>
+                ) : null}
+
+                <FieldCard>
+                  <label className={labelClass} htmlFor="target-intake">Target intake</label>
+                  <p id="intake-help" className="mt-1 text-sm leading-5 text-muted">Choose the existing intake that best matches your application timeline.</p>
+                  <select id="target-intake" className={inputClass} value={profile.targetIntake ?? ""} onChange={(event) => update("targetIntake", event.target.value || null)} aria-describedby={`intake-help${showRequiredErrors && errors.targetIntake ? " intake-error" : ""}`} aria-invalid={showRequiredErrors && Boolean(errors.targetIntake)}>
+                    <option value="">Choose an intake</option>
+                    <option>Fall 2027</option>
+                    <option>Spring 2028</option>
+                    <option>Fall 2028</option>
+                  </select>
+                  <ErrorText id="intake-error">{showRequiredErrors ? errors.targetIntake : undefined}</ErrorText>
+                </FieldCard>
+
                 <FieldCard>
                   <fieldset>
                     <legend className="font-semibold text-forest-900">Preferred countries <span className="font-normal text-muted">Optional</span></legend>
@@ -502,17 +691,13 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <ErrorText id="budget-error">{errors.annualBudget}</ErrorText>
                 </FieldCard>
 
-                <FieldCard>
-                  <label className={labelClass} htmlFor="target-intake">Target intake</label>
-                  <p id="intake-help" className="mt-1 text-sm leading-5 text-muted">Choose the existing intake that best matches your application timeline.</p>
-                  <select id="target-intake" className={inputClass} value={profile.targetIntake ?? ""} onChange={(event) => update("targetIntake", event.target.value || null)} aria-describedby={`intake-help${showRequiredErrors && errors.targetIntake ? " intake-error" : ""}`} aria-invalid={showRequiredErrors && Boolean(errors.targetIntake)}>
-                    <option value="">Choose an intake</option>
-                    <option>Fall 2027</option>
-                    <option>Spring 2028</option>
-                    <option>Fall 2028</option>
-                  </select>
-                  <ErrorText id="intake-error">{showRequiredErrors ? errors.targetIntake : undefined}</ErrorText>
-                </FieldCard>
+                {isTargetJourney ? (
+                  <FieldCard>
+                    <label className={labelClass} htmlFor="activities-and-achievements">Olympiads, projects, volunteering, or other achievements <span className="font-normal text-muted">Optional</span></label>
+                    <p id="activities-and-achievements-help" className="mt-1 text-sm leading-5 text-muted">This provides context for application planning and materials. It does not affect deterministic matching.</p>
+                    <textarea id="activities-and-achievements" className={`${inputClass} min-h-32 py-3`} value={profile.activitiesAndAchievements ?? ""} onChange={(event) => update("activitiesAndAchievements", event.target.value || null)} aria-describedby="activities-and-achievements-help" />
+                  </FieldCard>
+                ) : null}
               </>
             ) : null}
 
@@ -523,7 +708,7 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <p className="mt-2 leading-6 text-muted">Review the information that will shape your deterministic analysis.</p>
                 </div>
 
-                <ReviewSection title="Target" onEdit={() => setEntryStage("target")}>
+                <ReviewSection title="Target" onEdit={() => { setEditingFromReview(true); setEntryStage("target"); }}>
                   <p className="text-lg font-semibold text-ink">{target ? `${target.programName} @ ${target.universityName}` : "Not selected"}</p>
                   <p className="mt-1 text-sm text-muted">{target?.country ?? "Country unknown"}</p>
                 </ReviewSection>
@@ -571,11 +756,19 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
           </div>
 
           <footer className="flex flex-col-reverse gap-3 border-t border-forest-100 bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-            <button type="button" onClick={() => { setCompleted(false); setAttemptedStep(null); if (entryStage === "current") setEntryStage("target"); else if (entryStage === "diagnosis") setEntryStage("current"); else if (entryStage === "onboarding" && step === 1) setEntryStage("diagnosis"); else setStep((current) => current - 1); }} disabled={entryStage === "target"} className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-40">
-              Back
+            <button
+              type="button"
+              onClick={handleBack}
+              disabled={backDisabled}
+              className="min-h-12 rounded-full border border-forest-200 px-6 font-semibold text-forest-700 hover:bg-forest-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {backLabel}
             </button>
-            <button type="submit" className="min-h-12 rounded-full bg-forest-700 px-7 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600">
-              {entryStage === "target" ? "Continue to current state" : entryStage === "current" ? "Show instant diagnosis" : entryStage === "diagnosis" ? "Build my full plan" : step === 4 ? "Analyze my profile" : "Continue"}
+            <button
+              type="submit"
+              className="min-h-12 rounded-full bg-forest-700 px-7 font-semibold text-white hover:bg-forest-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-forest-600"
+            >
+              {submitLabel}
             </button>
           </footer>
         </section>

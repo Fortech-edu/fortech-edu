@@ -1,4 +1,4 @@
-import type { StudentProfile } from "../types/admissions.ts";
+import type { StudentProfile, UniversityProgram } from "../types/admissions.ts";
 
 export const emptyProfile: StudentProfile = {
   fullName: null,
@@ -53,6 +53,57 @@ export function transferInstantProfile(
     gpa: instantProfile.gpa ?? profile.gpa,
     ieltsScore: instantProfile.ieltsScore ?? profile.ieltsScore,
     satScore: instantProfile.satScore ?? profile.satScore,
+  };
+}
+
+export function inferFieldFromTarget(field: string | null | undefined): string | null {
+  if (!field) return null;
+  const normalized = field.trim().toLowerCase();
+  const csFields = [
+    "computer science",
+    "software engineering",
+    "data science",
+    "information technology",
+  ];
+  const businessFields = [
+    "business",
+    "business administration",
+    "international business",
+    "finance",
+    "business analytics",
+  ];
+
+  if (csFields.includes(normalized)) return "Computer Science";
+  if (businessFields.includes(normalized)) return "Business";
+  return null;
+}
+
+export function applyTargetProfileDefaults(
+  profile: StudentProfile,
+  target: UniversityProgram | null | undefined,
+  previousTarget?: UniversityProgram | null,
+): StudentProfile {
+  if (!target) return profile;
+
+  const targetDegree =
+    profile.targetDegree ??
+    (target.degreeLevel?.toLowerCase().startsWith("bachelor") ? "Bachelor" : profile.targetDegree);
+
+  const targetField = inferFieldFromTarget(target.field);
+  const previousField = previousTarget ? inferFieldFromTarget(previousTarget.field) : null;
+
+  const isTargetDerived =
+    profile.intendedField === null ||
+    (previousField !== null && profile.intendedField === previousField);
+
+  const intendedField = isTargetDerived
+    ? (targetField ?? profile.intendedField)
+    : profile.intendedField;
+
+  return {
+    ...profile,
+    targetDegree,
+    intendedField,
   };
 }
 

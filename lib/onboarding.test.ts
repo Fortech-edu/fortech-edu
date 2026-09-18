@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { getProgramById } from "../data/programs.ts";
+import { getProgramById, programs } from "../data/programs.ts";
 import type { StudentProfile } from "../types/admissions.ts";
+import { buildChangeImpact } from "./admissions/change-impact.ts";
 import { evaluateEligibility } from "./admissions/eligibility.ts";
+import { getPrimaryMatches } from "./admissions/matches.ts";
 import { calculateFit } from "./admissions/scoring.ts";
 import {
+  applyTargetProfileDefaults,
   emptyProfile,
+  inferFieldFromTarget,
   numberOrNull,
   stepErrors,
   toggleCountry,
@@ -245,4 +249,240 @@ test("transferred values use the existing Fit Score and eligibility rules", () =
 
   assert.deepEqual(calculateFit(transferred, program), calculateFit(directlyEntered, program));
   assert.equal(evaluateEligibility(transferred, program), evaluateEligibility(directlyEntered, program));
+});
+
+test("inferFieldFromTarget maps all catalog fields deterministically into Computer Science or Business", () => {
+  assert.ok(programs.length > 0);
+  for (const program of programs) {
+    const inferred = inferFieldFromTarget(program.field);
+    assert.ok(
+      inferred === "Computer Science" || inferred === "Business",
+      `Expected program ${program.id} with field "${program.field}" to map to Computer Science or Business, got ${inferred}`,
+    );
+  }
+
+  // Unknown, empty, or unmapped fields safely return null
+  assert.equal(inferFieldFromTarget(""), null);
+  assert.equal(inferFieldFromTarget(null), null);
+  assert.equal(inferFieldFromTarget(undefined), null);
+  assert.equal(inferFieldFromTarget("Unknown Subject"), null);
+  assert.equal(inferFieldFromTarget("Fine Arts"), null);
+});
+
+test("applyTargetProfileDefaults infers targetDegree and intendedField while preserving existing values", () => {
+  const csProgram = getProgramById("aitu-computer-science")!;
+  const busProgram = getProgramById("lut-digital-business")!;
+
+  const defaultedCs = applyTargetProfileDefaults(emptyProfile, csProgram);
+  assert.equal(defaultedCs.targetDegree, "Bachelor");
+  assert.equal(defaultedCs.intendedField, "Computer Science");
+
+  const defaultedBus = applyTargetProfileDefaults(emptyProfile, busProgram);
+  assert.equal(defaultedBus.targetDegree, "Bachelor");
+  assert.equal(defaultedBus.intendedField, "Business");
+
+  // Preserves existing explicit targetDegree / intendedField when no previous target is provided
+  const explicit = profile({
+    targetDegree: "Bachelor",
+    intendedField: "Business",
+  });
+  const preserved = applyTargetProfileDefaults(explicit, csProgram);
+  assert.equal(preserved.targetDegree, "Bachelor");
+  assert.equal(preserved.intendedField, "Business");
+
+  // Null target returns profile unchanged
+  assert.deepEqual(applyTargetProfileDefaults(explicit, null), explicit);
+});
+
+test("target switching updates target-derived intendedField consistently (CS -> Business and Business -> CS)", () => {
+  const csProgram = getProgramById("aitu-computer-science")!;
+  const busProgram = getProgramById("lut-digital-business")!;
+
+  // 1. Initial selection of CS target on clean profile
+  const csProfile = applyTargetProfileDefaults(emptyProfile, csProgram);
+  assert.equal(csProfile.targetDegree, "Bachelor");
+  assert.equal(csProfile.intendedField, "Computer Science");
+
+  // 2. CS target -> Business target switch
+  const busProfile = applyTargetProfileDefaults(csProfile, busProgram, csProgram);
+  assert.equal(busProfile.targetDegree, "Bachelor");
+  assert.equal(busProfile.intendedField, "Business");
+
+  // 3. Business target -> CS target switch
+  const backToCsProfile = applyTargetProfileDefaults(busProfile, csProgram, busProgram);
+  assert.equal(backToCsProfile.targetDegree, "Bachelor");
+  assert.equal(backToCsProfile.intendedField, "Computer Science");
+});
+
+test("target switching preserves genuinely explicit field choices", () => {
+  const csProgram = getProgramById("aitu-computer-science")!;
+  const anotherCsProgram = getProgramById("aitu-software-engineering")!;
+
+  // User explicitly chose "Business" while target was CS
+  const explicitChoice = profile({
+    targetDegree: "Bachelor",
+    intendedField: "Business",
+  });
+
+  // When switching target from CS to another program, explicit "Business" must be preserved
+  const preserved = applyTargetProfileDefaults(explicitChoice, anotherCsProgram, csProgram);
+  assert.equal(preserved.intendedField, "Business");
+});
+
+test("completed profile loads without silent mutation of null or existing intendedField", () => {
+  const completedStored = parseStoredProfile(JSON.stringify({
+    version: 1,
+    profile: {
+      ...emptyProfile,
+      currentStudyStage: "Grade 12",
+      targetDegree: "Bachelor",
+      intendedField: null,
+      targetIntake: "Fall 2027",
+    },
+    step: 4,
+    completed: true,
+    flowStage: "onboarding",
+    updatedAt: "2026-09-18T00:00:00.000Z",
+  }));
+
+  // Stored profile restored faithfully with intendedField === null
+  assert.equal(completedStored?.profile.intendedField, null);
+  assert.equal(completedStored?.completed, true);
+});
+
+test("legacy partial profile loads without silent mutation", () => {
+  const legacyPartial = parseStoredProfile(JSON.stringify({
+    version: 1,
+    profile: {
+      ...emptyProfile,
+      currentStudyStage: "Grade 11",
+      targetDegree: null,
+      intendedField: null,
+    },
+    step: 1,
+    completed: false,
+  }));
+
+  assert.equal(legacyPartial?.profile.intendedField, null);
+  assert.equal(legacyPartial?.profile.targetDegree, null);
+  assert.equal(legacyPartial?.step, 1);
+});
+
+test("saving an unrelated edit on completed profile does not produce a fake intendedField change impact", () => {
+  const previousProfile: StudentProfile = {
+    ...emptyProfile,
+    currentStudyStage: "Grade 12",
+    targetDegree: "Bachelor",
+    intendedField: null,
+    targetIntake: "Fall 2027",
+    annualBudget: 20_000,
+    budgetCurrency: "USD",
+  };
+
+  // User edits only annual budget
+  const nextProfile: StudentProfile = {
+    ...previousProfile,
+    annualBudget: 25_000,
+  };
+
+  const impact = buildChangeImpact(
+    previousProfile,
+    nextProfile,
+    getPrimaryMatches(previousProfile),
+    getPrimaryMatches(nextProfile),
+  );
+
+  // Change impact should contain only annualBudget, NOT intendedField
+  const inputChanges = impact.changedInputs.map((c) => c.input);
+  assert.ok(inputChanges.includes("annualBudget"));
+  assert.ok(!inputChanges.includes("intendedField"));
+});
+
+test("legacy 4-step flow renders Activities only in Academics and target flow renders it only in Missing Details", () => {
+  const source = readFileSync(new URL("../components/journey/onboarding-form.tsx", import.meta.url), "utf8");
+
+  // Step 2 renders Activities only when !isTargetJourney
+  assert.ok(source.includes("{!isTargetJourney ? ("));
+
+  // Step 3 renders Activities only when isTargetJourney
+  assert.ok(source.includes("{isTargetJourney ? ("));
+});
+
+test("first-time onboarding transitions directly to step 3 without asking academic scores or direction again", () => {
+  const program = getProgramById("lut-software-systems-engineering")!;
+  const instantCurrent: StudentProfile = {
+    ...emptyProfile,
+    currentStudyStage: "Grade 11",
+    gpa: 3.8,
+    ieltsScore: 7.0,
+    satScore: 1350,
+  };
+
+  // 1. Transfer instant profile scores & stage
+  const transferred = transferInstantProfile(emptyProfile, instantCurrent);
+  // 2. Apply target defaults from chosen program
+  const full = applyTargetProfileDefaults(transferred, program);
+
+  // Verifies that direction (Step 1) is already satisfied
+  assert.equal(full.currentStudyStage, "Grade 11");
+  assert.equal(full.targetDegree, "Bachelor");
+  assert.equal(full.intendedField, "Computer Science");
+  assert.equal(validStep(1, full), true);
+
+  // Verifies that academics (Step 2) are already satisfied
+  assert.equal(full.gpa, 3.8);
+  assert.equal(full.ieltsScore, 7.0);
+  assert.equal(full.satScore, 1350);
+  assert.equal(validStep(2, full), true);
+
+  // Step 3 requires only target intake before moving to review
+  assert.equal(validStep(3, full), false);
+  const readyForReview = { ...full, targetIntake: "Fall 2027" };
+  assert.equal(validStep(3, readyForReview), true);
+  assert.equal(validStep(4, readyForReview), true);
+});
+
+test("blank academic values remain valid intentional unknowns without blocking transition", () => {
+  const program = getProgramById("aitu-computer-science")!;
+  const instantCurrent: StudentProfile = {
+    ...emptyProfile,
+    currentStudyStage: "Grade 10",
+    gpa: null,
+    ieltsScore: null,
+    satScore: null,
+  };
+
+  const transferred = transferInstantProfile(emptyProfile, instantCurrent);
+  const full = applyTargetProfileDefaults(transferred, program);
+
+  assert.equal(full.currentStudyStage, "Grade 10");
+  assert.equal(full.gpa, null);
+  assert.equal(full.ieltsScore, null);
+  assert.equal(full.satScore, null);
+
+  // Blanks remain valid and unknown
+  assert.equal(validStep(2, full), true);
+});
+
+test("onboarding-form displays academic baseline confirmation and unified 5-step progress", () => {
+  const source = readFileSync(new URL("../components/journey/onboarding-form.tsx", import.meta.url), "utf8");
+
+  // Step 3 shows baseline & target confirmation card
+  assert.ok(source.includes("Academic baseline & target recorded"));
+  assert.ok(source.includes("Edit academics"));
+
+  // Unified 5-step labels for target journey
+  assert.ok(source.includes('"Target", "Current state", "Instant diagnosis", "Missing details", "Review"'));
+
+  // Dynamic header step count without hardcoded "05"
+  assert.ok(source.includes('Step {String(flowStep).padStart(2, "0")} of {String(flowLabels.length).padStart(2, "0")}'));
+
+  // Section edit returns to review
+  assert.ok(source.includes("editingFromReview"));
+  assert.ok(source.includes('"Save and return to review"'));
+  assert.ok(source.includes('"Back to review"'));
+
+  // Target switching safely tracks previous target in form
+  assert.ok(source.includes("lastTargetRef"));
+  assert.ok(source.includes("applyTargetProfileDefaults(current, program, previous)"));
 });
