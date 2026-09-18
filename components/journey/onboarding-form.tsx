@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { getProgramById, programs } from "../../data/programs.ts";
-import { buildChangeImpact } from "../../lib/admissions/change-impact.ts";
+import {
+  buildChangeImpact,
+  buildTargetPlanImpact,
+  hasMeaningfulImpact,
+  type ChangeImpact,
+} from "../../lib/admissions/change-impact.ts";
 import { getPrimaryMatches } from "../../lib/admissions/matches.ts";
 import {
   applyTargetProfileDefaults,
@@ -18,6 +23,7 @@ import { useClientReady } from "../../lib/storage/client-ready.ts";
 import { loadStoredProfile, saveStoredProfile } from "../../lib/storage/profile.ts";
 import type { OnboardingFlowStage, StoredProfile } from "../../lib/storage/profile.ts";
 import { loadSelectedProgram, saveSelectedProgram } from "../../lib/storage/selection.ts";
+import { loadProgress } from "../../lib/storage/progress.ts";
 import {
   clearEditBaseline,
   clearRecentChangeImpact,
@@ -369,7 +375,12 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
         getPrimaryMatches(previousProfile),
         getPrimaryMatches(profile),
       );
-      if (impact.programChanges.length > 0) saveRecentChangeImpact(impact);
+      const target = getProgramById(loadSelectedProgram());
+      const targetPlan = target
+        ? buildTargetPlanImpact(previousProfile, profile, target, loadProgress().byProgram[target.id] ?? [])
+        : undefined;
+      const fullImpact: ChangeImpact = targetPlan ? { ...impact, targetPlan } : impact;
+      if (hasMeaningfulImpact(fullImpact)) saveRecentChangeImpact(fullImpact);
       else clearRecentChangeImpact();
     } else {
       clearRecentChangeImpact();

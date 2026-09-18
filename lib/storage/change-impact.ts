@@ -62,10 +62,58 @@ function isProgramChange(value: unknown) {
   );
 }
 
+const COMPARISON_STATUSES = ["Match", "Action needed", "Needs verification", "Not required", "Not comparable"];
+const ROADMAP_PRIORITIES = ["high", "medium", "low"];
+
+function isTargetCriterionChange(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.key === "string" &&
+    typeof value.label === "string" &&
+    COMPARISON_STATUSES.includes(String(value.previousStatus)) &&
+    COMPARISON_STATUSES.includes(String(value.nextStatus)) &&
+    typeof value.previousValue === "string" &&
+    typeof value.nextValue === "string"
+  );
+}
+
+function isRoadmapTaskChange(value: unknown) {
+  if (!isRecord(value) || typeof value.taskId !== "string" || typeof value.title !== "string") return false;
+  const change = String(value.change);
+  if (change === "added") return ROADMAP_PRIORITIES.includes(String(value.priority));
+  if (change === "removed") return ROADMAP_PRIORITIES.includes(String(value.previousPriority));
+  if (change === "priority_changed") {
+    return (
+      ROADMAP_PRIORITIES.includes(String(value.previousPriority)) &&
+      ROADMAP_PRIORITIES.includes(String(value.nextPriority))
+    );
+  }
+  return false;
+}
+
+function isNextActionChange(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    (value.previousTitle === null || typeof value.previousTitle === "string") &&
+    (value.nextTitle === null || typeof value.nextTitle === "string")
+  );
+}
+
+function isTargetPlan(value: unknown) {
+  if (!isRecord(value)) return false;
+  return (
+    Array.isArray(value.criterionChanges) &&
+    value.criterionChanges.every(isTargetCriterionChange) &&
+    Array.isArray(value.roadmapTaskChanges) &&
+    value.roadmapTaskChanges.every(isRoadmapTaskChange) &&
+    (value.nextActionChange === null || isNextActionChange(value.nextActionChange))
+  );
+}
+
 function isChangeImpact(value: unknown): value is ChangeImpact {
   if (!isRecord(value) || !isRecord(value.summary)) return false;
   const summary = value.summary;
-  return (
+  if (!(
     Array.isArray(value.changedInputs) &&
     value.changedInputs.every(isChangedInput) &&
     Array.isArray(value.programChanges) &&
@@ -73,7 +121,8 @@ function isChangeImpact(value: unknown): value is ChangeImpact {
     ["entered", "removed", "movedUp", "movedDown", "eligibilityChanged"].every(
       (key) => Number.isInteger(summary[key]) && Number(summary[key]) >= 0,
     )
-  );
+  )) return false;
+  return value.targetPlan === undefined || isTargetPlan(value.targetPlan);
 }
 
 export function parseEditBaseline(raw: string | null): StudentProfile | null {

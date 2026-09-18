@@ -114,3 +114,52 @@ test("sessionStorage failures never break profile or matches flows", () => {
   assert.equal(saveRecentChangeImpact(impact, broken), false);
   assert.equal(loadRecentChangeImpact(broken), null);
 });
+
+test("a legacy impact without a target plan still restores", () => {
+  const storage = new MemoryStorage();
+  saveRecentChangeImpact(impact, storage, 1000);
+  const restored = loadRecentChangeImpact(storage, 1001);
+  assert.ok(restored);
+  assert.equal("targetPlan" in restored, false);
+});
+
+test("a valid target plan round-trips through recent-impact storage", () => {
+  const storage = new MemoryStorage();
+  const withPlan: ChangeImpact = {
+    ...impact,
+    targetPlan: {
+      criterionChanges: [
+        { key: "ielts", label: "IELTS", previousStatus: "Action needed", nextStatus: "Match", previousValue: "6", nextValue: "7" },
+      ],
+      roadmapTaskChanges: [
+        { change: "removed", taskId: "p:prepare-ielts", title: "Raise your IELTS score to the published minimum", previousPriority: "high" },
+        { change: "priority_changed", taskId: "p:verify-tuition", title: "Confirm tuition", previousPriority: "high", nextPriority: "medium" },
+        { change: "added", taskId: "p:take-ielts", title: "Take or retake IELTS", priority: "high" },
+      ],
+      nextActionChange: { previousTitle: "Raise your IELTS score", nextTitle: "Confirm documents" },
+    },
+  };
+  saveRecentChangeImpact(withPlan, storage, 1000);
+  assert.deepEqual(loadRecentChangeImpact(storage, 1001), withPlan);
+});
+
+test("a malformed target plan fails safely instead of crashing consumers", () => {
+  const malformed = JSON.stringify({
+    version: 1,
+    savedAt: 1000,
+    impact: {
+      ...impact,
+      targetPlan: {
+        criterionChanges: "not-an-array",
+        roadmapTaskChanges: [{ change: "teleported", taskId: 7 }],
+        nextActionChange: { previousTitle: 42 },
+      },
+    },
+  });
+  assert.equal(parseRecentChangeImpact(malformed, 1001), null);
+
+  const storage = new MemoryStorage();
+  storage.setItem(RECENT_IMPACT_STORAGE_KEY, malformed);
+  assert.equal(loadRecentChangeImpact(storage, 1001), null);
+  assert.equal(storage.getItem(RECENT_IMPACT_STORAGE_KEY), null);
+});

@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { demoPrograms } from "../../data/fixtures/demo-programs.ts";
+import { programs } from "../../data/programs.ts";
 import type {
   Recommendation,
   ScoreBreakdown,
   StudentProfile,
   UniversityProgram,
 } from "../../types/admissions.ts";
-import { buildChangeImpact } from "./change-impact.ts";
+import { buildChangeImpact, buildTargetPlanImpact, hasMeaningfulImpact } from "./change-impact.ts";
+import { recommendPrograms } from "./recommend.ts";
 
 const profile: StudentProfile = {
   fullName: "Student",
@@ -396,4 +399,152 @@ test("an unknown-only breakdown transition is not meaningful by itself", () => {
   );
 
   assert.deepEqual(impact.programChanges, []);
+});
+
+const targetProgram = demoPrograms.find(({ id }) => id === "northbridge-cs")!;
+
+test("identical profiles produce no target plan impact", () => {
+  const plan = buildTargetPlanImpact(profile, profile, targetProgram);
+
+  assert.deepEqual(plan, { criterionChanges: [], roadmapTaskChanges: [], nextActionChange: null });
+  const impact = { ...buildChangeImpact(profile, profile, [], []), targetPlan: plan };
+  assert.equal(hasMeaningfulImpact(impact), false);
+});
+
+test("an IELTS gap becoming satisfied updates criterion, roadmap, and Next Action together", () => {
+  const before = { ...profile, ieltsScore: 6 };
+  const after = { ...profile, ieltsScore: 7 };
+  const plan = buildTargetPlanImpact(before, after, targetProgram);
+
+  assert.deepEqual(
+    plan.criterionChanges.map(({ key, previousStatus, nextStatus }) => ({ key, previousStatus, nextStatus })),
+    [{ key: "ielts", previousStatus: "Action needed", nextStatus: "Match" }],
+  );
+
+  const removedIds = plan.roadmapTaskChanges
+    .filter((change) => change.change === "removed")
+    .map((change) => (change.change === "removed" ? change.taskId : ""));
+  assert.deepEqual(removedIds.sort(), ["northbridge-cs:prepare-ielts", "northbridge-cs:take-ielts"]);
+
+  assert.deepEqual(plan.nextActionChange, {
+    previousTitle: "Raise your IELTS score to the published minimum",
+    nextTitle: "Confirm the required application documents",
+  });
+
+  const impact = { ...buildChangeImpact(before, after, [], []), targetPlan: plan };
+  assert.equal(hasMeaningfulImpact(impact), true);
+});
+
+test("unknown to known IELTS keeps the previous value unknown and transitions truthfully", () => {
+  const plan = buildTargetPlanImpact({ ...profile, ieltsScore: null }, { ...profile, ieltsScore: 7 }, targetProgram);
+  const ielts = plan.criterionChanges.find(({ key }) => key === "ielts")!;
+
+  assert.equal(ielts.previousStatus, "Needs verification");
+  assert.equal(ielts.nextStatus, "Match");
+  assert.equal(ielts.previousValue, "Not provided");
+  assert.doesNotMatch(ielts.previousValue, /0|fail/i);
+});
+
+test("a changed plan still produces impact when recommendation ranks do not move", () => {
+  const before = { ...profile, ieltsScore: 6 };
+  const after = { ...profile, ieltsScore: 7 };
+  const unchangedRecommendations = recommendPrograms(before, demoPrograms);
+
+  const impact = buildChangeImpact(before, after, unchangedRecommendations, unchangedRecommendations);
+  assert.deepEqual(impact.programChanges, []);
+
+  const plan = buildTargetPlanImpact(before, after, targetProgram);
+  assert.ok(plan.criterionChanges.length > 0);
+  assert.ok(plan.roadmapTaskChanges.length > 0);
+  assert.equal(hasMeaningfulImpact({ ...impact, targetPlan: plan }), true);
+});
+
+test("roadmap task diff uses stable task IDs for added, removed, and priority changes", () => {
+  const removed = buildTargetPlanImpact({ ...profile, ieltsScore: 6 }, { ...profile, ieltsScore: 7 }, targetProgram);
+  assert.deepEqual(
+    removed.roadmapTaskChanges
+      .filter((change) => change.change === "removed")
+      .map((change) => (change.change === "removed" ? change.taskId : ""))
+      .sort(),
+    ["northbridge-cs:prepare-ielts", "northbridge-cs:take-ielts"],
+  );
+
+  const added = buildTargetPlanImpact({ ...profile, ieltsScore: 7 }, { ...profile, ieltsScore: 6 }, targetProgram);
+  assert.deepEqual(
+    added.roadmapTaskChanges
+      .filter((change) => change.change === "added")
+      .map((change) => (change.change === "added" ? change.taskId : ""))
+      .sort(),
+    ["northbridge-cs:prepare-ielts", "northbridge-cs:take-ielts"],
+  );
+
+  const deprioritized = buildTargetPlanImpact({ ...profile, ieltsScore: 6 }, { ...profile, ieltsScore: null }, targetProgram);
+  const priorityChange = deprioritized.roadmapTaskChanges.find(
+    (change) => change.change === "priority_changed" && change.taskId === "northbridge-cs:prepare-ielts",
+  );
+  assert.ok(priorityChange);
+  assert.equal(priorityChange.change === "priority_changed" ? priorityChange.previousPriority : "", "high");
+  assert.equal(priorityChange.change === "priority_changed" ? priorityChange.nextPriority : "", "medium");
+  assert.equal(
+    deprioritized.roadmapTaskChanges.some(
+      (change) => change.change === "removed" && change.taskId === "northbridge-cs:prepare-ielts",
+    ),
+    false,
+  );
+});
+
+test("next action diff applies the same completed task ids on both sides", () => {
+  const plan = buildTargetPlanImpact(
+    { ...profile, ieltsScore: 6 },
+    { ...profile, ieltsScore: 7 },
+    targetProgram,
+    ["northbridge-cs:prepare-ielts"],
+  );
+
+  assert.deepEqual(plan.nextActionChange, {
+    previousTitle: "Take or retake IELTS",
+    nextTitle: "Confirm the required application documents",
+  });
+});
+
+test("a changed input with no downstream consequence does not fabricate impact", () => {
+  const before = { ...profile, preferredCountries: ["Finland"] };
+  const after = { ...profile, preferredCountries: [] };
+  const unchangedRecommendations = recommendPrograms(before, demoPrograms);
+
+  const plan = buildTargetPlanImpact(before, after, targetProgram);
+  assert.deepEqual(plan.criterionChanges, []);
+  assert.deepEqual(plan.roadmapTaskChanges, []);
+  assert.equal(plan.nextActionChange, null);
+
+  const impact = buildChangeImpact(before, after, unchangedRecommendations, unchangedRecommendations);
+  assert.equal(impact.changedInputs.length > 0, true);
+  assert.equal(hasMeaningfulImpact({ ...impact, targetPlan: plan }), false);
+});
+
+test("improving an already satisfied IELTS fabricates no plan impact", () => {
+  const before = { ...profile, ieltsScore: 7 };
+  const after = { ...profile, ieltsScore: 7.5 };
+
+  const plan = buildTargetPlanImpact(before, after, targetProgram);
+  assert.deepEqual(plan.criterionChanges, []);
+  assert.deepEqual(plan.roadmapTaskChanges, []);
+  assert.equal(plan.nextActionChange, null);
+
+  const impact = buildChangeImpact(before, after, [], []);
+  assert.equal(hasMeaningfulImpact({ ...impact, targetPlan: plan }), false);
+});
+
+test("a real verified target shows the same deterministic IELTS transition", () => {
+  const twente = programs.find(({ id }) => id === "utwente-technical-computer-science")!;
+  const plan = buildTargetPlanImpact({ ...profile, ieltsScore: 5.5 }, { ...profile, ieltsScore: 6.5 }, twente);
+
+  assert.deepEqual(
+    plan.criterionChanges.map(({ key, previousStatus, nextStatus }) => ({ key, previousStatus, nextStatus })),
+    [{ key: "ielts", previousStatus: "Action needed", nextStatus: "Match" }],
+  );
+  assert.equal(
+    plan.roadmapTaskChanges.some((change) => change.change === "removed" && change.taskId === "utwente-technical-computer-science:prepare-ielts"),
+    true,
+  );
 });
