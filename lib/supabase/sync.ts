@@ -31,6 +31,7 @@ export function serializeProfile(profile: StoredProfile): PersistedStudentProfil
     targetDegree,
     intendedField,
     preferredCountries,
+    preferredLanguage,
     targetIntake,
     gpa,
     ieltsScore,
@@ -43,6 +44,7 @@ export function serializeProfile(profile: StoredProfile): PersistedStudentProfil
     targetDegree,
     intendedField,
     preferredCountries,
+    preferredLanguage: preferredLanguage ?? null,
     targetIntake,
     gpa,
     ieltsScore,
@@ -83,6 +85,7 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     "targetDegree",
     "intendedField",
     "preferredCountries",
+    "preferredLanguage",
     "targetIntake",
     "gpa",
     "ieltsScore",
@@ -90,7 +93,11 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     "annualBudget",
     "budgetCurrency",
   ];
-  if (Object.keys(remote).length !== profileKeys.length || !profileKeys.every((key) => key in remote)) return null;
+  const legacyProfileKeys = profileKeys.filter((key) => key !== "preferredLanguage");
+  if (
+    !profileKeys.every((key) => key in remote) &&
+    !(Object.keys(remote).length === legacyProfileKeys.length && legacyProfileKeys.every((key) => key in remote))
+  ) return null;
   const candidate: StudentProfile = {
     fullName: localProfile?.fullName ?? null,
     nationality: localProfile?.nationality ?? null,
@@ -99,6 +106,7 @@ export function parseRemoteProfile(value: unknown, localProfile: StudentProfile 
     targetDegree: remote.targetDegree as string | null,
     intendedField: remote.intendedField as string | null,
     preferredCountries: remote.preferredCountries as string[],
+    preferredLanguage: (remote.preferredLanguage as string | null | undefined) ?? null,
     targetIntake: remote.targetIntake as string | null,
     gpa: remote.gpa as number | null,
     ieltsScore: remote.ieltsScore as number | null,

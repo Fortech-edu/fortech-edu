@@ -3,6 +3,7 @@ import type { UniversityProgram } from "../../types/admissions.ts";
 const fixtureMetadata = {
   city: null,
   tuitionNotes: null,
+  languageOfInstruction: null,
   sources: [],
   verificationDate: null,
 };

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { StudentProfile } from "../types/admissions.ts";
 import { emptyProfile, numberOrNull, stepErrors, toggleCountry, validStep } from "./onboarding.ts";
@@ -19,6 +20,19 @@ test("initial onboarding requires only the direction choices", () => {
     "targetDegree",
     "intendedField",
   ]);
+});
+
+test("language preference is optional and legacy profiles restore it as unknown", () => {
+  assert.equal(emptyProfile.preferredLanguage, null);
+  const legacy = { ...profile() } as Record<string, unknown>;
+  delete legacy.preferredLanguage;
+  const restored = parseStoredProfile(JSON.stringify({ version: 1, profile: legacy, step: 3, completed: false }));
+  assert.equal(restored?.profile.preferredLanguage, null);
+});
+
+test("onboarding review shows the selected language or a neutral no-preference value", () => {
+  const source = readFileSync(new URL("../components/journey/onboarding-form.tsx", import.meta.url), "utf8");
+  assert.ok(source.includes('Preferred language: {display(profile.preferredLanguage, "No language preference")}'));
 });
 
 test("optional academic blanks remain null and valid", () => {

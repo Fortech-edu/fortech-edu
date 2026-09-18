@@ -12,6 +12,7 @@ export type StudentProfile = {
   targetDegree: string | null;
   intendedField: string | null;
   preferredCountries: string[];
+  preferredLanguage: string | null;
   targetIntake: string | null;
   gpa: number | null;
   ieltsScore: number | null;
@@ -53,6 +54,8 @@ export type UniversityProgram = {
   academicRequirement: Requirement | null;
   ieltsRequirement: Requirement | null;
   satRequirement: Requirement | null;
+  /** Null means the program language has not been verified from an official source. */
+  languageOfInstruction: string | null;
   /** Null or absent means the official document requirement is not yet verified. */
   applicationDocuments?: ApplicationDocumentRequirements | null;
   deadline: string | null;

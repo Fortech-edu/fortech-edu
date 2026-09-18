@@ -21,6 +21,7 @@ const profile: StudentProfile = {
   targetDegree: "Bachelor",
   intendedField: "Computer Science",
   preferredCountries: ["Finland", "Netherlands"],
+  preferredLanguage: null,
   targetIntake: "Fall 2027",
   gpa: 3.5,
   ieltsScore: 6,
@@ -108,6 +109,14 @@ test("timeline comparison shows known alignment and preserves an unknown deadlin
   const unknown = criterion(profile, { ...byId("northbridge-cs"), deadline: null }, "timeline");
   assert.equal(unknown.status, "Needs verification");
   assert.equal(unknown.programValue, "Unknown");
+});
+
+test("language-of-instruction evidence distinguishes no preference, unknown, match, and mismatch", () => {
+  const program = { ...byId("northbridge-cs"), languageOfInstruction: "English" };
+  assert.equal(criterion(profile, program, "languageOfInstruction").status, "Not required");
+  assert.equal(criterion({ ...profile, preferredLanguage: "English" }, program, "languageOfInstruction").status, "Match");
+  assert.equal(criterion({ ...profile, preferredLanguage: "Finnish" }, program, "languageOfInstruction").status, "Action needed");
+  assert.equal(criterion({ ...profile, preferredLanguage: "English" }, { ...program, languageOfInstruction: null }, "languageOfInstruction").status, "Needs verification");
 });
 
 test("official source URLs pass through unchanged", () => {

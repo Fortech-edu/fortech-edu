@@ -37,6 +37,7 @@ const profile: StudentProfile = {
   targetDegree: "Bachelor's",
   intendedField: "Computer Science",
   preferredCountries: ["Canada"],
+  preferredLanguage: null,
   targetIntake: "2027",
   gpa: 3.5,
   ieltsScore: 6.5,
@@ -212,6 +213,11 @@ test("profile payload excludes unused identifying fields", () => {
   assert.equal("fullName" in payload, false);
   assert.equal("nationality" in payload, false);
   assert.equal("countryOfResidence" in payload, false);
+});
+
+test("profile payload preserves an optional language preference", () => {
+  const payload = serializeProfile({ version: 1, profile: { ...profile, preferredLanguage: "English" }, step: 4, completed: true, updatedAt: "2026-02-02T00:00:00.000Z" });
+  assert.equal(payload.preferredLanguage, "English");
 });
 
 test("client-side Supabase code never references privileged keys", () => {

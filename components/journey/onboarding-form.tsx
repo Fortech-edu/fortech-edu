@@ -33,6 +33,7 @@ const stepDetails = [
 
 const countries = [...new Set(programs.flatMap(({ country }) => country ? [country] : []))].sort();
 const currencies = [...new Set(programs.flatMap(({ tuitionCurrency }) => tuitionCurrency ? [tuitionCurrency] : []))].sort();
+const languages = [...new Set(programs.flatMap(({ languageOfInstruction }) => languageOfInstruction ? [languageOfInstruction] : []))].sort();
 const secondaryStages = ["Undergraduate student", "Graduate"];
 
 const inputClass =
@@ -268,6 +269,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
   const showRequiredErrors = attemptedStep === step;
   const unsupportedCountries = profile.preferredCountries.filter((country) => !countries.includes(country));
   const availableCurrencies = [...new Set([...currencies, ...(profile.budgetCurrency ? [profile.budgetCurrency] : [])])];
+  const availableLanguages = [...new Set([...languages, ...(profile.preferredLanguage ? [profile.preferredLanguage] : [])])];
 
   return (
     <form onSubmit={submit} noValidate className="onboarding-layout grid items-start gap-8 lg:grid-cols-[minmax(17rem,0.72fr)_minmax(0,1.6fr)] lg:gap-12">
@@ -416,6 +418,15 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
                 </FieldCard>
 
                 <FieldCard>
+                  <label className={labelClass} htmlFor="preferred-language">What language would you prefer to study in? <span className="font-normal text-muted">Optional</span></label>
+                  <p id="preferred-language-help" className="mt-1 text-sm leading-5 text-muted">Choose from languages verified in the current program set. Leave blank if you have no preference.</p>
+                  <select id="preferred-language" className={inputClass} value={profile.preferredLanguage ?? ""} onChange={(event) => update("preferredLanguage", event.target.value || null)} aria-describedby="preferred-language-help">
+                    <option value="">No preference</option>
+                    {availableLanguages.map((language) => <option key={language}>{language}</option>)}
+                  </select>
+                </FieldCard>
+
+                <FieldCard>
                   <label className={labelClass} htmlFor="budget">Annual tuition budget <span className="font-normal text-muted">Optional</span></label>
                   <p id="budget-help" className="mt-1 text-sm leading-5 text-muted">Tuition only · living costs are not included.</p>
                   <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-2">
@@ -467,6 +478,7 @@ function OnboardingEditor({ initial }: { initial: StoredProfile | null }) {
 
                 <ReviewSection title="Preferences" step={3} onEdit={edit}>
                   <p className="font-semibold text-ink">{profile.preferredCountries.join(" · ") || "Countries not selected"}</p>
+                  <p className="mt-2 text-sm text-ink">Preferred language: {display(profile.preferredLanguage, "No language preference")}</p>
                   <p className="mt-2 text-sm text-ink">{budgetLabel(profile)}</p>
                   <p className="mt-1 text-sm text-ink">{display(profile.targetIntake, "Intake not selected")}</p>
                 </ReviewSection>
