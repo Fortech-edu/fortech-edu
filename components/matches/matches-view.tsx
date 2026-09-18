@@ -100,6 +100,7 @@ function RecommendationList({ profile, recommendations, impact }: { profile: Non
         <RecommendationCard
           key={recommendation.program.id}
           recommendation={recommendation}
+          profile={profile}
           rank={index + 1}
           recentChange={recentChangeLabel(recentChanges.get(recommendation.program.id))}
           selected={selected.includes(recommendation.program.id)}
