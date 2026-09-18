@@ -573,21 +573,21 @@ function OnboardingEditor({ initial, initialTarget }: { initial: StoredProfile |
                   <p id="gpa-help" className="mt-1 text-sm leading-5 text-muted">Add your GPA on the supported 0–4 scale, if you know it.</p>
                   <input id="gpa" className={inputClass} type="number" min="0" max="4" step="0.01" inputMode="decimal" placeholder="3.5" value={profile.gpa ?? ""} onChange={(event) => update("gpa", numberOrNull(event.target.value))} aria-describedby={`gpa-help${errors.gpa ? " gpa-error" : ""}`} aria-invalid={Boolean(errors.gpa)} />
                   <ErrorText id="gpa-error">{errors.gpa}</ErrorText>
-                  <ThresholdHint criterionKey="academic" label="Academic requirement" value={profile.gpa} requirement={target?.academicRequirement ?? null} />
+                  <ThresholdHint criterionKey="academic" label="Academic requirement" value={profile.gpa} requirement={target?.academicRequirement ?? null} error={errors.gpa} />
                 </FieldCard>
                 <FieldCard>
                   <label className={labelClass} htmlFor="ielts">IELTS <span className="font-normal text-muted">Optional</span></label>
                   <p id="ielts-help" className="mt-1 text-sm leading-5 text-muted">Haven’t taken IELTS yet? Leave this blank; the requirement stays unknown until program facts are checked.</p>
                   <input id="ielts" className={inputClass} type="number" min="0" max="9" step="0.5" inputMode="decimal" placeholder="6.0" value={profile.ieltsScore ?? ""} onChange={(event) => update("ieltsScore", numberOrNull(event.target.value))} aria-describedby={`ielts-help${errors.ieltsScore ? " ielts-error" : ""}`} aria-invalid={Boolean(errors.ieltsScore)} />
                   <ErrorText id="ielts-error">{errors.ieltsScore}</ErrorText>
-                  <ThresholdHint criterionKey="ielts" label="IELTS" value={profile.ieltsScore} requirement={target?.ieltsRequirement ?? null} />
+                  <ThresholdHint criterionKey="ielts" label="IELTS" value={profile.ieltsScore} requirement={target?.ieltsRequirement ?? null} error={errors.ieltsScore} />
                 </FieldCard>
                 <FieldCard>
                   <label className={labelClass} htmlFor="sat">SAT <span className="font-normal text-muted">Optional</span></label>
                   <p id="sat-help" className="mt-1 text-sm leading-5 text-muted">Leave blank if not taken. Missing SAT is not treated as a failed score.</p>
                   <input id="sat" className={inputClass} type="number" min="400" max="1600" step="10" inputMode="numeric" placeholder="1200" value={profile.satScore ?? ""} onChange={(event) => update("satScore", numberOrNull(event.target.value))} aria-describedby={`sat-help${errors.satScore ? " sat-error" : ""}`} aria-invalid={Boolean(errors.satScore)} />
                   <ErrorText id="sat-error">{errors.satScore}</ErrorText>
-                  <ThresholdHint criterionKey="sat" label="SAT" value={profile.satScore} requirement={target?.satRequirement ?? null} />
+                  <ThresholdHint criterionKey="sat" label="SAT" value={profile.satScore} requirement={target?.satRequirement ?? null} error={errors.satScore} />
                 </FieldCard>
                 {!isTargetJourney ? (
                   <FieldCard>

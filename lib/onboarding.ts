@@ -107,6 +107,14 @@ export function applyTargetProfileDefaults(
   };
 }
 
+export function isScoreValid(key: "academic" | "ielts" | "sat", value: number | null): boolean {
+  if (value === null) return true;
+  if (key === "academic") return value >= 0 && value <= 4;
+  if (key === "ielts") return value >= 0 && value <= 9;
+  if (key === "sat") return value >= 400 && value <= 1600;
+  return true;
+}
+
 export function stepErrors(step: number, profile: StudentProfile) {
   const errors: Partial<Record<OnboardingErrorKey, string>> = {};
 
@@ -117,13 +125,13 @@ export function stepErrors(step: number, profile: StudentProfile) {
   }
 
   if (step === 2) {
-    if (profile.gpa !== null && (profile.gpa < 0 || profile.gpa > 4)) {
+    if (profile.gpa !== null && !isScoreValid("academic", profile.gpa)) {
       errors.gpa = "Enter a GPA between 0 and 4.";
     }
-    if (profile.ieltsScore !== null && (profile.ieltsScore < 0 || profile.ieltsScore > 9)) {
+    if (profile.ieltsScore !== null && !isScoreValid("ielts", profile.ieltsScore)) {
       errors.ieltsScore = "Enter an IELTS score between 0 and 9.";
     }
-    if (profile.satScore !== null && (profile.satScore < 400 || profile.satScore > 1600)) {
+    if (profile.satScore !== null && !isScoreValid("sat", profile.satScore)) {
       errors.satScore = "Enter an SAT score between 400 and 1600.";
     }
   }
