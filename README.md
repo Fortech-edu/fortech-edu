@@ -425,9 +425,9 @@ In compliance with LOCUS hackathon disclosure rules:
 
 | Contributor | Hackathon Role | Focus Areas |
 | :--- | :--- | :--- |
-| **Nurdaulet Beisenbek** (`@nurdauletbeisenbek7-web`) | **Team Captain / Lead Architect** | System architecture, deterministic admissions engine, Change Impact logic, AI Advisor integration, full-stack implementation |
-| **Alikhan** (`@Alikhan`) | **Product & Admissions Research** | Admissions criteria research, university source verification, UX specifications, quality assurance |
-
+| **Nurdaulet Beisenbek** | **Team Captain / Product & Full-Stack Lead** | Product concept and architecture, admissions engine, AI Advisor integration, Change Impact logic, full-stack development, product UX, final integration and submission |
+| **Сыздыков Диас Ренатович** | **Presentation & Demo Lead** | Presentation deck, demo preparation, pitch structure, visual materials, product review, and final presentation support |
+| **Алихан Муратов Закирович** | **Project Support & QA** | Product testing, content review, minor implementation support, quality assurance, and submission preparation |
 *(The team captain should verify that Team & Roles exactly matches the officially registered hackathon team prior to final submission).*
 
 
