@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { diagnosisFallback, recommendationFallback } from "../../lib/ai/fallback.ts";
-import { createAIResultCacheKey } from "../../lib/ai/cache.ts";
+import { createAIResultCacheKey, getCachedAIResult, setCachedAIResult } from "../../lib/ai/cache.ts";
 import {
   diagnosisExplanationCopy,
   parseDiagnosisResult,
@@ -206,8 +206,8 @@ function ExplanationList({ title, items }: { title: string; items: string[] }) {
 
 function requestEnhancement(cacheKey: string, endpoint: string, body: string) {
   try {
-    const cached = window.sessionStorage.getItem(cacheKey);
-    if (cached) return Promise.resolve(JSON.parse(cached) as unknown);
+    const cached = getCachedAIResult(cacheKey);
+    if (cached) return Promise.resolve(cached);
   } catch {
     // Continue without cache when browser storage is unavailable.
   }
@@ -223,7 +223,7 @@ function requestEnhancement(cacheKey: string, endpoint: string, body: string) {
     .then((response) => response.ok ? response.json() : Promise.reject(new Error("RequestFailed")))
     .then((result: unknown) => {
       try {
-        window.sessionStorage.setItem(cacheKey, JSON.stringify(result));
+        setCachedAIResult(cacheKey, result);
       } catch {
         // The deterministic content remains available without cache.
       }
