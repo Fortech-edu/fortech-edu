@@ -55,7 +55,7 @@ flowchart LR
 4. **Matches:** Explore recommendations ranked by eligibility and normalized Fit Score, supported by concrete evidence tiles.
 5. **Compare:** Evaluate two programs side-by-side across deadlines, academics, test thresholds, and tuition.
 6. **Roadmap:** Receive a structured, stage-ordered action roadmap derived directly from confirmed gaps and official requirements.
-7. **Progress:** Check off completed tasks with persistent state saved in the browser and synchronized to the cloud.
+7. **Progress:** Check off completed tasks with persistent state saved locally, which may be synchronized through Supabase when cloud sync is configured.
 8. **Recalculation:** Update any profile score (e.g., retaking IELTS from 5.5 to 6.5) to immediately inspect the **Change Impact** across diagnosis, recommendations, and roadmap priorities.
 
 Fortech creates an **action path**, not just passive recommendations.
@@ -102,13 +102,13 @@ Judges can verify the entire connected product loop using verified production pr
     - Update IELTS from `5.5` to `6.5`.
     - Save changes: observe the **Change Impact** banner highlighting that the language gap is closed.
     - Review the updated Diagnosis: status transitions from *Action needed* to *Match*.
-    - Review the recalculated Roadmap: language preparation is completed; priority elevates to official document verification and transcript submission.
+    - Review the recalculated Roadmap: observe the resolved language gap and the resulting deterministic changes to Diagnosis, Change Impact, and Roadmap priorities.
 
 ---
 
 ## Key Features
 
-- **Instant Admission Check:** Evaluate any target program on the landing page in under 30 seconds with 100% deterministic feedback before signing up.
+- **Instant Admission Check:** Previews target requirements and deterministic gaps directly from the landing page.
 - **Requirements-First Target Selection:** Choose a target program from verified records and review official requirements before sharing personal data.
 - **Student Profile:** Collects academic baseline (GPA, IELTS, SAT), direction (degree level, field), preferences (intake, countries, budget), and activities context.
 - **Deterministic Gap Diagnosis:** Exact comparison across all published criteria. Distinguishes between *Match*, *Action needed*, and *Needs verification*.
@@ -118,7 +118,7 @@ Judges can verify the entire connected product loop using verified production pr
 - **Side-by-Side Comparison:** Direct comparison between two selected programs across deadlines, requirements, tuition, and eligibility.
 - **Personalized Action Roadmap:** Phase-ordered preparation tasks (Early Preparation, Testing & Credentials, Application & Verification).
 - **Immediate Next Action:** Prominently highlights the single highest-leverage task required to improve admission standing.
-- **Progress Tracking:** Interactive task check-offs persisted locally and synchronized remotely.
+- **Progress Tracking:** Progress is persisted locally and may be synchronized through Supabase when cloud sync is configured.
 - **Change Impact & Recalculation:** Real-time analysis of what changes when a test score, budget, or target changes.
 - **Diagnosis AI Advisor:** Constrained server-side advisor providing structured guidance without altering admissions truth.
 - **Official Source Provenance:** Direct URLs to official university course pages, tuition sheets, and application guides.
@@ -163,18 +163,18 @@ Fortech strictly separates **deterministic admissions logic** from **generative 
    - **Eligible / Match:** Profile meets or exceeds published threshold.
    - **Possible with action:** Known, closeable gap (e.g., test retake).
    - **Needs verification:** Required information is unknown or qualification-specific.
-   - **Not eligible:** Confirmed structural mismatch.
-2. **Fit Score Formula:** Normalized composite across comparable dimensions:
-   - Study Field Alignment (25%)
-   - Academic GPA Fit (15%)
-   - Tuition Budget Compatibility (15%)
-   - English Proficiency / IELTS (10%)
-   - Standardized Testing / SAT (10%)
-   - Country Preference (10%)
-   - Intake Timeline Fit (10%)
-   - Activities & Context (5%)
+2. **Fit Score Formula:** Normalized composite across known comparable dimensions (as implemented in `lib/admissions/scoring.ts`):
+   - **Field fit:** 25%
+   - **Academic fit:** 20%
+   - **Budget fit:** 20%
+   - **Language fit:** 15%
+   - **Country preference:** 10%
+   - **Timeline fit:** 10%
+
+   *Only known, comparable dimensions are included in the normalized score. Missing or non-comparable dimensions are excluded from the denominator rather than penalized.*
 3. **Unknown Handling:** Unknown values are excluded from scoring denominators and reduce the **Data Coverage Index**. They are never assumed to be passes or failures.
 4. **No Admission Probability:** Fit Score reflects student-to-program alignment, not acceptance probability. Fortech does not fabricate acceptance chances.
+
 
 ---
 
@@ -237,7 +237,7 @@ Fortech is built with modern web technologies prioritizing speed, type safety, a
 
 - **Frontend:** Next.js 16 App Router, React 19, TypeScript, and Tailwind CSS v4.
 - **Deterministic Domain Engine:** Pure TypeScript modules in `lib/admissions/` with zero UI or framework dependencies.
-- **State & Storage:** Client-side local storage provides instantaneous offline state. Optional anonymous Supabase synchronization enables cross-device continuity.
+- **State & Storage:** Client-side local storage provides instantaneous offline state. Progress is persisted locally and may be synchronized through Supabase when cloud sync is configured.
 - **AI Integration:** Server-side API endpoints (`app/api/ai/diagnosis`, `app/api/ai/explanation`) utilizing constrained JSON chat completions.
 - **Hosting:** Vercel deployment with edge caching for static assets.
 
@@ -416,7 +416,8 @@ In compliance with LOCUS hackathon disclosure rules:
 | :--- | :--- | :--- |
 | **Open-Source Infrastructure** | Next.js 16, React 19, TypeScript, Tailwind CSS, ESLint, `@supabase/supabase-js` | Standard framework boilerplate, build tooling, and static typing |
 | **Pre-existing Scaffolding** | Repository initialization boilerplate (`create-next-app`) | Project folder structure and standard configuration files |
-| **Hackathon-Developed Core Logic** | • Deterministic Admissions & Fit Score Engine (`lib/admissions/`)<br>• Real-time Change Impact Recalculation Engine (`lib/admissions/change-impact.ts`)<br>• Server-side AI Advisor Architecture & Safety Layer (`lib/ai/`)<br>• Curated 58-Program Verified Dataset with Provenance (`data/programs.ts`)<br>• Instant Admission Check, Diagnosis View, Compare Matrix & Priority Roadmap UI | 100% created for Fortech during the hackathon |
+| **Hackathon-Developed Core Logic** | • Deterministic Admissions & Fit Score Engine (`lib/admissions/`)<br>• Real-time Change Impact Recalculation Engine (`lib/admissions/change-impact.ts`)<br>• Server-side AI Advisor Architecture & Safety Layer (`lib/ai/`)<br>• Curated 58-Program Verified Dataset with Provenance (`data/programs.ts`)<br>• Instant Admission Check, Diagnosis View, Compare Matrix & Priority Roadmap UI | The hackathon-specific admissions engine, personalization flow, diagnosis, recommendation logic, roadmap, Change Impact, AI safety layer, catalog integration, and product UX were implemented for Fortech, while standard open-source frameworks and project scaffolding were reused. |
+
 
 ---
 
@@ -427,7 +428,8 @@ In compliance with LOCUS hackathon disclosure rules:
 | **Nurdaulet Beisenbek** (`@nurdauletbeisenbek7-web`) | **Team Captain / Lead Architect** | System architecture, deterministic admissions engine, Change Impact logic, AI Advisor integration, full-stack implementation |
 | **Alikhan** (`@Alikhan`) | **Product & Admissions Research** | Admissions criteria research, university source verification, UX specifications, quality assurance |
 
-*(Additional team members and role adjustments can be confirmed prior to final submission).*
+*(The team captain should verify that Team & Roles exactly matches the officially registered hackathon team prior to final submission).*
+
 
 ---
 
